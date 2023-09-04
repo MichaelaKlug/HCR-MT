@@ -1,9 +1,7 @@
 import os
 import sys
 from tqdm import tqdm
-import torch
-#from tensorboardX import SummaryWriter
-#from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 import shutil
 import argparse
 import logging
@@ -11,12 +9,6 @@ import time
 import random
 import numpy as np
 import pdb
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
-
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
 
 import torch
 import torch.optim as optim
@@ -25,43 +17,36 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
-# from networks.hierarchical_vnet import VNet
-from networks.vnet_pyramid import VNet
+# from torch.nn import DataParallel
+
+from networks.vnet import VNet
 from dataloaders import utils
 from utils import ramps, losses
 from dataloaders.la_heart import LAHeart, RandomCrop, CenterCrop, RandomRotFlip, ToTensor, TwoStreamBatchSampler
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='../data/2018LA_Seg_Training Set', help='Name of Experiment')
-parser.add_argument('--exp', type=str,  default='mmt', help='model_name')
+parser.add_argument('--root_path', type=str, default='../data/2018LA_Seg_Training Set/', help='Name of Experiment')
+parser.add_argument('--exp', type=str,  default='ua_mt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
 parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
 parser.add_argument('--labeled_bs', type=int, default=2, help='labeled_batch_size per gpu')
+parser.add_argument('--T', type=int,  default=8, help='number of forward passes')
 
 parser.add_argument('--base_lr', type=float,  default=0.01, help='maximum epoch number to train')
 parser.add_argument('--deterministic', type=int,  default=1, help='whether use deterministic training')
 parser.add_argument('--seed', type=int,  default=1337, help='random seed')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
-### weight
-parser.add_argument('--w0', type=float,  default=0.5, help='weight of p0')
-parser.add_argument('--w1', type=float,  default=0.4, help='weight of p1')
-parser.add_argument('--w2', type=float,  default=0.05, help='weight of p2')
-parser.add_argument('--w3', type=float,  default=0.05, help='weight of p3')
-### train
-parser.add_argument('--mt', type=int,  default=0, help='mean teacher')
-parser.add_argument('--mmt', type=int,  default=1, help='multi-scale mean teacher')
-### costs
+# costs
 parser.add_argument('--ema_decay', type=float,  default=0.99, help='ema_decay')
 parser.add_argument('--consistency_type', type=str,  default="mse", help='consistency_type')
 parser.add_argument('--consistency', type=float,  default=0.1, help='consistency')
 parser.add_argument('--consistency_rampup', type=float,  default=40.0, help='consistency_rampup')
-parser.add_argument('--temperature', type=float,  default=1.0, help='temperature')
 args = parser.parse_args()
 
 train_data_path = args.root_path
-snapshot_path = "../model_la/" + args.exp + "/"
+snapshot_path = "../model_brats/" + args.exp + "/"
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -69,13 +54,6 @@ batch_size = args.batch_size * len(args.gpu.split(','))
 max_iterations = args.max_iterations
 base_lr = args.base_lr
 labeled_bs = args.labeled_bs
-temperature = args.temperature
-w0 = args.w0
-w1 = args.w1
-w2 = args.w2
-w3 = args.w3
-mt = args.mt
-mmt = args.mmt
 
 if args.deterministic:
     cudnn.benchmark = False
@@ -131,8 +109,13 @@ if __name__ == "__main__":
 
     def create_model(ema=False):
         # Network definition
-        net = VNet(n_channels=1, n_classes=num_classes, normalization='batchnorm', has_dropout=True, pyramid_has_dropout=True)
+        net = VNet(n_channels=1, n_classes=num_classes, normalization='batchnorm', has_dropout=True)
         model = net.cuda()
+        # if len(args.gpu) == 1:
+        #     model = net.cuda()
+        # else:
+        #     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+        #     model = DataParallel(net.cuda())
         if ema:
             for param in model.parameters():
                 param.detach_()
@@ -143,7 +126,7 @@ if __name__ == "__main__":
 
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
-    trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=4, pin_memory=True, worker_init_fn=worker_init_fn)
+    trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=4, pin_memory=True,worker_init_fn=worker_init_fn)
 
     model.train()
     ema_model.train()
@@ -156,13 +139,12 @@ if __name__ == "__main__":
     else:
         assert False, args.consistency_type
 
-    #writer = SummaryWriter(snapshot_path+'/log')
+    writer = SummaryWriter(snapshot_path+'/log')
     logging.info("{} itertations per epoch".format(len(trainloader)))
 
     iter_num = 0
     max_epoch = max_iterations//len(trainloader)+1
     lr_ = base_lr
-    kl_distance = torch.nn.KLDivLoss(reduction='none')
     model.train()
     for epoch_num in tqdm(range(max_epoch), ncols=70):
         time1 = time.time()
@@ -170,113 +152,98 @@ if __name__ == "__main__":
             time2 = time.time()
             # print('fetch data cost {}'.format(time2-time1))
             volume_batch, label_batch = sampled_batch['image'], sampled_batch['label']
-            volume_batch, label_batch = volume_batch.cuda(), label_batch.cuda()   
+            volume_batch, label_batch = volume_batch.cuda(), label_batch.cuda()
 
             noise = torch.clamp(torch.randn_like(volume_batch) * 0.1, -0.2, 0.2)
-            ema_inputs = volume_batch + noise 
-
-            # distill: 
-            # student bs=4
-            outputs_main, outputs_aux1, outputs_aux2, outputs_aux3 = model(volume_batch)
-            outputs_main_soft = F.softmax(outputs_main / temperature, dim=1)
-            outputs_aux1_soft = F.softmax(outputs_aux1 / temperature, dim=1)
-            outputs_aux2_soft = F.softmax(outputs_aux2 / temperature, dim=1)
-            outputs_aux3_soft = F.softmax(outputs_aux3 / temperature, dim=1)
-
-            # teacher bs=2
+            ema_inputs = volume_batch + noise
+            outputs = model(volume_batch)
             with torch.no_grad():
-                ema_outputs_main, ema_outputs_aux1, ema_outputs_aux2, ema_outputs_aux3 = ema_model(ema_inputs)
-            ema_outputs_main_soft = F.softmax(ema_outputs_main / temperature, dim=1)
-            ema_outputs_aux1_soft = F.softmax(ema_outputs_aux1 / temperature, dim=1)
-            ema_outputs_aux2_soft = F.softmax(ema_outputs_aux2 / temperature, dim=1)
-            ema_outputs_aux3_soft = F.softmax(ema_outputs_aux3 / temperature, dim=1)
+                ema_output = ema_model(ema_inputs)
+            T = args.T
+            volume_batch_r = volume_batch.repeat(2, 1, 1, 1, 1)
+            stride = volume_batch_r.shape[0] // 2 
+            preds = torch.zeros([stride * T, 2, patch_size[0], patch_size[1], patch_size[2]]).cuda()
+            for i in range(T//2):
+                ema_inputs = volume_batch_r + torch.clamp(torch.randn_like(volume_batch_r) * 0.1, -0.2, 0.2)
+                # pdb.set_trace()
+                with torch.no_grad():
+                    preds[2 * stride * i:2 * stride * (i + 1)] = ema_model(ema_inputs)
+            preds = F.softmax(preds, dim=1)
+            preds = preds.reshape(T, stride, 2, patch_size[0], patch_size[1], patch_size[2])
+            preds = torch.mean(preds, dim=0)
+            uncertainty = -1.0*torch.sum(preds*torch.log(preds + 1e-6), dim=1, keepdim=True) 
 
             ## calculate the loss
-            # 1. L_sup bs=2 (labeled)
-            if mt: 
-                ### the last layer
-                loss_seg = F.cross_entropy(outputs_main[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                supervised_loss = 0.5*(loss_seg+loss_seg_dice)
-
-            if mmt: 
-                ### hierarchical loss
-                loss_seg_main = F.cross_entropy(outputs_main[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_aux1 = F.cross_entropy(outputs_aux1[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_aux2 = F.cross_entropy(outputs_aux2[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_aux3 = F.cross_entropy(outputs_aux3[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_dice_main = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg_dice_aux1 = losses.dice_loss(outputs_aux1_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg_dice_aux2 = losses.dice_loss(outputs_aux2_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg_dice_aux3 = losses.dice_loss(outputs_aux3_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg = w0 * loss_seg_main + w1 * loss_seg_aux1 + w2 * loss_seg_aux2 + w3 * loss_seg_aux3
-                loss_seg_dice = w0 * loss_seg_dice_main + w1 * loss_seg_dice_aux1 + w2 * loss_seg_dice_aux2 + w3 * loss_seg_dice_aux3
-                supervised_loss = 0.5*(loss_seg+loss_seg_dice)
-            
-            # 2. L_con (labeled and unlabeled)
-            ### hierarchical consistency
-            consistency_main_dist = (ema_outputs_main_soft - outputs_main_soft)**2
-            consistency_aux1_dist = (ema_outputs_aux1_soft - outputs_aux1_soft)**2
-            consistency_aux2_dist = (ema_outputs_aux2_soft - outputs_aux2_soft)**2
-            consistency_aux3_dist = (ema_outputs_aux3_soft - outputs_aux3_soft)**2
-            consistency_main_dist = torch.mean(consistency_main_dist)
-            consistency_aux1_dist = torch.mean(consistency_aux1_dist)
-            consistency_aux2_dist = torch.mean(consistency_aux2_dist)
-            consistency_aux3_dist = torch.mean(consistency_aux3_dist)
-            consistency_dist = w0 * consistency_main_dist + w1 * consistency_aux1_dist + w2 * consistency_aux2_dist + w3 * consistency_aux3_dist
+            loss_seg = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
+            outputs_soft = F.softmax(outputs, dim=1)
+            loss_seg_dice = losses.dice_loss(outputs_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
 
             consistency_weight = get_current_consistency_weight(iter_num//150)
+            consistency_dist = consistency_criterion(outputs, ema_output)
+            threshold = (0.75+0.25*ramps.sigmoid_rampup(iter_num, max_iterations))*np.log(2)
+            mask = (uncertainty<threshold).float()
+            consistency_dist = torch.sum(mask*consistency_dist)/(2*torch.sum(mask)+1e-16)
             consistency_loss = consistency_weight * consistency_dist
-
-            # total loss
-            loss = supervised_loss + consistency_loss
+            loss = 0.5*(loss_seg+loss_seg_dice) + consistency_loss
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
             update_ema_variables(model, ema_model, args.ema_decay, iter_num)
 
             iter_num = iter_num + 1
-            # writer.add_scalar('lr', lr_, iter_num)
-            # writer.add_scalar('loss/loss', loss, iter_num)
-            # writer.add_scalar('loss/loss_seg', loss_seg, iter_num)
-            # writer.add_scalar('loss/loss_seg_dice', loss_seg_dice, iter_num)
-            # writer.add_scalar('train/consistency_loss', consistency_loss, iter_num)
-            # writer.add_scalar('train/consistency_weight', consistency_weight, iter_num)
-            # writer.add_scalar('train/consistency_dist', consistency_dist, iter_num)
+            writer.add_scalar('uncertainty/mean', uncertainty[0,0].mean(), iter_num)
+            writer.add_scalar('uncertainty/max', uncertainty[0,0].max(), iter_num)
+            writer.add_scalar('uncertainty/min', uncertainty[0,0].min(), iter_num)
+            writer.add_scalar('uncertainty/mask_per', torch.sum(mask)/mask.numel(), iter_num)
+            writer.add_scalar('uncertainty/threshold', threshold, iter_num)
+            writer.add_scalar('lr', lr_, iter_num)
+            writer.add_scalar('loss/loss', loss, iter_num)
+            writer.add_scalar('loss/loss_seg', loss_seg, iter_num)
+            writer.add_scalar('loss/loss_seg_dice', loss_seg_dice, iter_num)
+            writer.add_scalar('train/consistency_loss', consistency_loss, iter_num)
+            writer.add_scalar('train/consistency_weight', consistency_weight, iter_num)
+            writer.add_scalar('train/consistency_dist', consistency_dist, iter_num)
 
             logging.info('iteration %d : loss : %f cons_dist: %f, loss_weight: %f' %
                          (iter_num, loss.item(), consistency_dist.item(), consistency_weight))
             if iter_num % 50 == 0:
                 image = volume_batch[0, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
                 grid_image = make_grid(image, 5, normalize=True)
-                #writer.add_image('train/Image', grid_image, iter_num)
+                writer.add_image('train/Image', grid_image, iter_num)
 
                 # image = outputs_soft[0, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                image = torch.max(outputs_main_soft[0, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
+                image = torch.max(outputs_soft[0, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
                 image = utils.decode_seg_map_sequence(image)
                 grid_image = make_grid(image, 5, normalize=False)
-                #writer.add_image('train/Predicted_label', grid_image, iter_num)
+                writer.add_image('train/Predicted_label', grid_image, iter_num)
 
                 image = label_batch[0, :, :, 20:61:10].permute(2, 0, 1)
                 grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                #writer.add_image('train/Groundtruth_label', grid_image, iter_num)
+                writer.add_image('train/Groundtruth_label', grid_image, iter_num)
 
+                image = uncertainty[0, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
+                grid_image = make_grid(image, 5, normalize=True)
+                writer.add_image('train/uncertainty', grid_image, iter_num)
+
+                mask2 = (uncertainty > threshold).float()
+                image = mask2[0, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
+                grid_image = make_grid(image, 5, normalize=True)
+                writer.add_image('train/mask', grid_image, iter_num)
                 #####
                 image = volume_batch[-1, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
                 grid_image = make_grid(image, 5, normalize=True)
-                #writer.add_image('unlabel/Image', grid_image, iter_num)
+                writer.add_image('unlabel/Image', grid_image, iter_num)
 
                 # image = outputs_soft[-1, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                image = torch.max(outputs_main_soft[-1, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
+                image = torch.max(outputs_soft[-1, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
                 image = utils.decode_seg_map_sequence(image)
                 grid_image = make_grid(image, 5, normalize=False)
-                #writer.add_image('unlabel/Predicted_label', grid_image, iter_num)
+                writer.add_image('unlabel/Predicted_label', grid_image, iter_num)
 
                 image = label_batch[-1, :, :, 20:61:10].permute(2, 0, 1)
                 grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                #writer.add_image('unlabel/Groundtruth_label', grid_image, iter_num)
+                writer.add_image('unlabel/Groundtruth_label', grid_image, iter_num)
 
             ## change lr
             if iter_num % 2500 == 0:
@@ -296,4 +263,4 @@ if __name__ == "__main__":
     save_mode_path = os.path.join(snapshot_path, 'iter_'+str(max_iterations)+'.pth')
     torch.save(model.state_dict(), save_mode_path)
     logging.info("save model to {}".format(save_mode_path))
-    #writer.close()
+    writer.close()
