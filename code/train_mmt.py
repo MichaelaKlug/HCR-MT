@@ -199,6 +199,7 @@ if __name__ == "__main__":
                 supervised_loss = 0.5*(loss_seg+loss_seg_dice)
 
             if mmt: 
+                ##IS THIS WHERE I MUST CHANGE?
                 ### hierarchical loss
                 loss_seg_main = F.cross_entropy(outputs_main[:labeled_bs], label_batch[:labeled_bs])
                 loss_seg_aux1 = F.cross_entropy(outputs_aux1[:labeled_bs], label_batch[:labeled_bs])
@@ -214,6 +215,7 @@ if __name__ == "__main__":
             
             # 2. L_con (labeled and unlabeled)
             ### hierarchical consistency
+            ##IS THIS WHERE I MUST CHANGE?
             consistency_main_dist = (ema_outputs_main_soft - outputs_main_soft)**2
             consistency_aux1_dist = (ema_outputs_aux1_soft - outputs_aux1_soft)**2
             consistency_aux2_dist = (ema_outputs_aux2_soft - outputs_aux2_soft)**2
