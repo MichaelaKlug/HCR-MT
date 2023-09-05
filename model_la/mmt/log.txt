@@ -1,0 +1,6 @@
+[10:42:23.228] Namespace(root_path='../data/2018LA_Seg_Training Set', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[10:42:23.456] 8 itertations per epoch
+[10:43:40.003] Namespace(root_path='../data/2018LA_Seg_Training Set', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[10:43:40.181] 8 itertations per epoch
+[10:45:16.810] Namespace(root_path='../data/2018LA_Seg_Training Set', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[10:45:16.983] 8 itertations per epoch
