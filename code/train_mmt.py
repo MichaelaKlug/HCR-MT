@@ -202,29 +202,29 @@ if __name__ == "__main__":
                 ##IS THIS WHERE I MUST CHANGE?
                 ### hierarchical loss
                 loss_seg_main = F.cross_entropy(outputs_main[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_aux1 = F.cross_entropy(outputs_aux1[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_aux2 = F.cross_entropy(outputs_aux2[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_aux3 = F.cross_entropy(outputs_aux3[:labeled_bs], label_batch[:labeled_bs])
+                # loss_seg_aux1 = F.cross_entropy(outputs_aux1[:labeled_bs], label_batch[:labeled_bs])
+                # loss_seg_aux2 = F.cross_entropy(outputs_aux2[:labeled_bs], label_batch[:labeled_bs])
+                # loss_seg_aux3 = F.cross_entropy(outputs_aux3[:labeled_bs], label_batch[:labeled_bs])
                 loss_seg_dice_main = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg_dice_aux1 = losses.dice_loss(outputs_aux1_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg_dice_aux2 = losses.dice_loss(outputs_aux2_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg_dice_aux3 = losses.dice_loss(outputs_aux3_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
-                loss_seg = w0 * loss_seg_main + w1 * loss_seg_aux1 + w2 * loss_seg_aux2 + w3 * loss_seg_aux3
-                loss_seg_dice = w0 * loss_seg_dice_main + w1 * loss_seg_dice_aux1 + w2 * loss_seg_dice_aux2 + w3 * loss_seg_dice_aux3
+                # loss_seg_dice_aux1 = losses.dice_loss(outputs_aux1_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
+                # loss_seg_dice_aux2 = losses.dice_loss(outputs_aux2_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
+                # loss_seg_dice_aux3 = losses.dice_loss(outputs_aux3_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
+                loss_seg = loss_seg_main #+ w1 * loss_seg_aux1 + w2 * loss_seg_aux2 + w3 * loss_seg_aux3
+                loss_seg_dice = loss_seg_dice_main #+ w1 * loss_seg_dice_aux1 + w2 * loss_seg_dice_aux2 + w3 * loss_seg_dice_aux3
                 supervised_loss = 0.5*(loss_seg+loss_seg_dice)
             
             # 2. L_con (labeled and unlabeled)
             ### hierarchical consistency
             ##IS THIS WHERE I MUST CHANGE?
             consistency_main_dist = (ema_outputs_main_soft - outputs_main_soft)**2
-            consistency_aux1_dist = (ema_outputs_aux1_soft - outputs_aux1_soft)**2
-            consistency_aux2_dist = (ema_outputs_aux2_soft - outputs_aux2_soft)**2
-            consistency_aux3_dist = (ema_outputs_aux3_soft - outputs_aux3_soft)**2
+            # consistency_aux1_dist = (ema_outputs_aux1_soft - outputs_aux1_soft)**2
+            # consistency_aux2_dist = (ema_outputs_aux2_soft - outputs_aux2_soft)**2
+            # consistency_aux3_dist = (ema_outputs_aux3_soft - outputs_aux3_soft)**2
             consistency_main_dist = torch.mean(consistency_main_dist)
-            consistency_aux1_dist = torch.mean(consistency_aux1_dist)
-            consistency_aux2_dist = torch.mean(consistency_aux2_dist)
-            consistency_aux3_dist = torch.mean(consistency_aux3_dist)
-            consistency_dist = w0 * consistency_main_dist + w1 * consistency_aux1_dist + w2 * consistency_aux2_dist + w3 * consistency_aux3_dist
+            # consistency_aux1_dist = torch.mean(consistency_aux1_dist)
+            # consistency_aux2_dist = torch.mean(consistency_aux2_dist)
+            # consistency_aux3_dist = torch.mean(consistency_aux3_dist)
+            consistency_dist = consistency_main_dist #+ w1 * consistency_aux1_dist + w2 * consistency_aux2_dist + w3 * consistency_aux3_dist
 
             consistency_weight = get_current_consistency_weight(iter_num//150)
             consistency_loss = consistency_weight * consistency_dist
