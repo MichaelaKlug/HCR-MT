@@ -137,8 +137,8 @@ if __name__ == "__main__":
                 param.detach_()
         return model
 
-    model = create_model()
-    ema_model = create_model(ema=True)
+    model = create_model() #student model
+    ema_model = create_model(ema=True) #teacher model 
 
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
@@ -176,6 +176,7 @@ if __name__ == "__main__":
 
             # distill: 
             # student bs=4
+            
             outputs_main, outputs_aux1, outputs_aux2, outputs_aux3 = model(volume_batch)
             outputs_main_soft = F.softmax(outputs_main / temperature, dim=1)
             outputs_aux1_soft = F.softmax(outputs_aux1 / temperature, dim=1)
@@ -230,7 +231,7 @@ if __name__ == "__main__":
             consistency_loss = consistency_weight * consistency_dist
 
             # total loss
-            loss = supervised_loss + consistency_loss
+            loss = supervised_loss + consistency_loss #+contrastive_loss here
 
             optimizer.zero_grad()
             loss.backward()
