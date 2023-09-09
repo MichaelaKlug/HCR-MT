@@ -36,6 +36,11 @@ def entropy_loss(p,C=2):
 
 #when adding to total loss- look at how other coefficients have been calculated for the other losses
 def contrastive_loss(fs,ft_plus,ftminus_queue):
+    fs=fs.cpu()
+    ft_plus=ft_plus.cpu()
+    if ftminus_queue.qsize()==0:
+        #should this be return 1??
+        return 0
     inner_prod=np.inner(fs,ft_plus)
     numerator=np.exp(inner_prod)
     minus_sum=0

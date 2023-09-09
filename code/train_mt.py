@@ -9,6 +9,7 @@ import time
 import random
 import numpy as np
 import pdb
+import queue
 
 import torch
 import torch.optim as optim
@@ -136,6 +137,12 @@ if __name__ == "__main__":
     writer = SummaryWriter(snapshot_path+'/log')
     logging.info("{} itertations per epoch".format(len(trainloader)))
 
+
+    max_queue_size=100
+    #create a queue to store all the negative keys --> maximum size is 100
+    negative_keys=queue.Queue()
+
+
     iter_num = 0
     max_epoch = max_iterations//len(trainloader)+1 
     lr_ = base_lr
@@ -152,11 +159,17 @@ if __name__ == "__main__":
             ema_inputs = volume_batch + noise
 
             # student bs=4
-            outputs = model(volume_batch)
+            student_encoder_output,outputs = model(volume_batch)
+            #student_encoder_output = torch.tensor(student_encoder_output)
+            # student_encoder_output=np.asarray(student_encoder_output)
+            # student_encoder_output = torch.FloatTensor(student_encoder_output)
+            print(type(student_encoder_output))
+            print(type(outputs))
+            
             
             # teacher bs=2
             with torch.no_grad():
-                ema_output = ema_model(ema_inputs)
+                teacher_encoder_output,ema_output = ema_model(ema_inputs)
 
             ## calculate the loss
             # L_sup bs=2
@@ -171,8 +184,16 @@ if __name__ == "__main__":
             consistency_dist = torch.mean(consistency_dist)
             consistency_loss = consistency_weight * consistency_dist
 
+
+            cont_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            if negative_keys.qsize()>=100:
+                negative_keys.get()
+            negative_keys.put(teacher_encoder_output)
+
+            contrastive_loss= consistency_weight * cont_loss
+        
             # total loss
-            loss = supervised_loss + consistency_loss
+            loss = supervised_loss + consistency_loss + contrastive_loss
 
             optimizer.zero_grad()
             loss.backward()

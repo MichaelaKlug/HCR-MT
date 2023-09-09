@@ -142,10 +142,7 @@ if __name__ == "__main__":
     model = create_model() #student model
     ema_model = create_model(ema=True) #teacher model 
 
-    max_queue_size=100
-    #create a queue to store all the negative keys --> maximum size is 100
-    negative_keys=queue.Queue()
-
+   
 
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
@@ -184,7 +181,7 @@ if __name__ == "__main__":
             # distill: 
             # student bs=4
             
-            student_encoder_output,outputs_main, outputs_aux1, outputs_aux2, outputs_aux3 = model(volume_batch)
+            outputs_main, outputs_aux1, outputs_aux2, outputs_aux3 = model(volume_batch)
             outputs_main_soft = F.softmax(outputs_main / temperature, dim=1)
             # outputs_aux1_soft = F.softmax(outputs_aux1 / temperature, dim=1)
             # outputs_aux2_soft = F.softmax(outputs_aux2 / temperature, dim=1)
@@ -192,7 +189,7 @@ if __name__ == "__main__":
 
             # teacher bs=2
             with torch.no_grad():
-                teacher_encoder_output,ema_outputs_main, ema_outputs_aux1, ema_outputs_aux2, ema_outputs_aux3 = ema_model(ema_inputs)
+                ema_outputs_main, ema_outputs_aux1, ema_outputs_aux2, ema_outputs_aux3 = ema_model(ema_inputs)
             ema_outputs_main_soft = F.softmax(ema_outputs_main / temperature, dim=1)
             
             
@@ -226,11 +223,7 @@ if __name__ == "__main__":
 
 
                 #contrastive loss
-            cont_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
-            if negative_keys.qsize()>=100:
-                negative_keys.get()
-            negative_keys.put(teacher_encoder_output)
-        
+            
 
 
             # 2. L_con (labeled and unlabeled)
@@ -248,10 +241,10 @@ if __name__ == "__main__":
 
             consistency_weight = get_current_consistency_weight(iter_num//150)
             consistency_loss = consistency_weight * consistency_dist
-            contrastive_loss= consistency_weight * cont_loss
+            
 
             # total loss
-            loss = supervised_loss + consistency_loss  + contrastive_loss#+contrastive_loss here
+            loss = supervised_loss + consistency_loss  #+ contrastive_loss#+contrastive_loss here
 
             optimizer.zero_grad()
             loss.backward()
