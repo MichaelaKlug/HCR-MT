@@ -1,6 +1,7 @@
 import torch
 from torch.nn import functional as F
 import numpy as np
+import queue
 
 def dice_loss(score, target):
     target = target.float()
@@ -28,6 +29,23 @@ def entropy_loss(p,C=2):
     ent = torch.mean(y1)
 
     return ent
+
+#Loss formula from the paper 'Semi-supervise d me dical image segmentation via a triple d-uncertainty guided mean teacher model with contrastive learning'
+#equation : -log( (exp(fs . ft+)) / (sum over all ft- of : exp(fs.ft-)) )
+#where . is the inner product operation of vectors
+
+#when adding to total loss- look at how other coefficients have been calculated for the other losses
+def contrastive_loss(fs,ft_plus,ftminus_queue):
+    inner_prod=np.inner(fs,ft_plus)
+    numerator=np.exp(inner_prod)
+    minus_sum=0
+    for ftminus in ftminus_queue.qsize():
+        inner=np.inner(fs,ftminus)
+        denom=np.exp(inner)
+        minus_sum+=denom
+    answer=-1*np.log(numerator/minus_sum)
+    return answer
+
 
 def softmax_dice_loss(input_logits, target_logits):
     """Takes softmax on both sides and returns MSE loss

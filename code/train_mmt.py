@@ -12,6 +12,8 @@ import random
 import numpy as np
 import pdb
 import os
+import queue 
+
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 
@@ -140,12 +142,17 @@ if __name__ == "__main__":
     model = create_model() #student model
     ema_model = create_model(ema=True) #teacher model 
 
+    max_queue_size=100
+    #create a queue to store all the negative keys --> maximum size is 100
+    negative_keys=queue.Queue()
+
+
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
     trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=0, pin_memory=True, worker_init_fn=worker_init_fn)
 
-    model.train()
-    ema_model.train()
+    model.train() #student model
+    ema_model.train() #teacher model
     optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
 
     if args.consistency_type == 'mse':
@@ -177,19 +184,21 @@ if __name__ == "__main__":
             # distill: 
             # student bs=4
             
-            outputs_main, outputs_aux1, outputs_aux2, outputs_aux3 = model(volume_batch)
+            student_encoder_output,outputs_main, outputs_aux1, outputs_aux2, outputs_aux3 = model(volume_batch)
             outputs_main_soft = F.softmax(outputs_main / temperature, dim=1)
-            outputs_aux1_soft = F.softmax(outputs_aux1 / temperature, dim=1)
-            outputs_aux2_soft = F.softmax(outputs_aux2 / temperature, dim=1)
-            outputs_aux3_soft = F.softmax(outputs_aux3 / temperature, dim=1)
+            # outputs_aux1_soft = F.softmax(outputs_aux1 / temperature, dim=1)
+            # outputs_aux2_soft = F.softmax(outputs_aux2 / temperature, dim=1)
+            # outputs_aux3_soft = F.softmax(outputs_aux3 / temperature, dim=1)
 
             # teacher bs=2
             with torch.no_grad():
-                ema_outputs_main, ema_outputs_aux1, ema_outputs_aux2, ema_outputs_aux3 = ema_model(ema_inputs)
+                teacher_encoder_output,ema_outputs_main, ema_outputs_aux1, ema_outputs_aux2, ema_outputs_aux3 = ema_model(ema_inputs)
             ema_outputs_main_soft = F.softmax(ema_outputs_main / temperature, dim=1)
-            ema_outputs_aux1_soft = F.softmax(ema_outputs_aux1 / temperature, dim=1)
-            ema_outputs_aux2_soft = F.softmax(ema_outputs_aux2 / temperature, dim=1)
-            ema_outputs_aux3_soft = F.softmax(ema_outputs_aux3 / temperature, dim=1)
+            
+            
+            # ema_outputs_aux1_soft = F.softmax(ema_outputs_aux1 / temperature, dim=1)
+            # ema_outputs_aux2_soft = F.softmax(ema_outputs_aux2 / temperature, dim=1)
+            # ema_outputs_aux3_soft = F.softmax(ema_outputs_aux3 / temperature, dim=1)
 
             ## calculate the loss
             # 1. L_sup bs=2 (labeled)
@@ -212,8 +221,18 @@ if __name__ == "__main__":
                 # loss_seg_dice_aux3 = losses.dice_loss(outputs_aux3_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
                 loss_seg = loss_seg_main #+ w1 * loss_seg_aux1 + w2 * loss_seg_aux2 + w3 * loss_seg_aux3
                 loss_seg_dice = loss_seg_dice_main #+ w1 * loss_seg_dice_aux1 + w2 * loss_seg_dice_aux2 + w3 * loss_seg_dice_aux3
+                
                 supervised_loss = 0.5*(loss_seg+loss_seg_dice)
-            
+
+
+                #contrastive loss
+            cont_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            if negative_keys.qsize()>=100:
+                negative_keys.get()
+            negative_keys.put(teacher_encoder_output)
+        
+
+
             # 2. L_con (labeled and unlabeled)
             ### hierarchical consistency
             ##IS THIS WHERE I MUST CHANGE?
@@ -229,9 +248,10 @@ if __name__ == "__main__":
 
             consistency_weight = get_current_consistency_weight(iter_num//150)
             consistency_loss = consistency_weight * consistency_dist
+            contrastive_loss= consistency_weight * cont_loss
 
             # total loss
-            loss = supervised_loss + consistency_loss #+contrastive_loss here
+            loss = supervised_loss + consistency_loss  + contrastive_loss#+contrastive_loss here
 
             optimizer.zero_grad()
             loss.backward()

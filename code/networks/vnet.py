@@ -236,7 +236,7 @@ class VNet(nn.Module):
         out = self.decoder(features)
         if turnoff_drop:
             self.has_dropout = has_dropout
-        return out
+        return features,out
 
     # def __init_weight(self):
     #     for m in self.modules():
