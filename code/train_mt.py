@@ -1,7 +1,7 @@
 import os
 import sys
 from tqdm import tqdm
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 import shutil
 import argparse
 import logging
@@ -30,8 +30,9 @@ parser.add_argument('--exp', type=str,  default='mt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
-parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
-parser.add_argument('--labeled_bs', type=int, default=2, help='labeled_batch_size per gpu')
+#was 4 and 2 making 2 and 1
+parser.add_argument('--batch_size', type=int, default=2, help='batch_size per gpu')
+parser.add_argument('--labeled_bs', type=int, default=1, help='labeled_batch_size per gpu')
 
 parser.add_argument('--base_lr', type=float,  default=0.01, help='maximum epoch number to train')
 parser.add_argument('--deterministic', type=int,  default=1, help='whether use deterministic training')
@@ -121,7 +122,7 @@ if __name__ == "__main__":
     
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
-    trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=4, pin_memory=True, worker_init_fn=worker_init_fn)
+    trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=0, pin_memory=True, worker_init_fn=worker_init_fn)
 
     model.train()
     ema_model.train()
@@ -186,9 +187,12 @@ if __name__ == "__main__":
 
 
             #cont_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
-            if negative_keys.qsize()>=100:
-                negative_keys.get()
-            negative_keys.put(teacher_encoder_output)
+            los=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            # print(type(consistency_loss))
+            # print(type(los))
+            # if negative_keys.qsize()>=100:
+            #     negative_keys.get()
+            # negative_keys.put(teacher_encoder_output)
 
 
             # print(type(consistency_weight))
@@ -196,7 +200,7 @@ if __name__ == "__main__":
             #contrastive_loss= consistency_weight * cont_loss
         
             # total loss
-            loss = supervised_loss + consistency_loss #+ contrastive_loss
+            loss = supervised_loss + consistency_loss + los#+ contrastive_loss
 
             optimizer.zero_grad()
             loss.backward()

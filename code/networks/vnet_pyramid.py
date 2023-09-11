@@ -257,5 +257,6 @@ class VNet(nn.Module):
         dp1_out_seg, dp2_out_seg, dp3_out_seg, dp4_out_seg = self.decoder(features, shape)
         if turnoff_drop:
             self.has_dropout = has_dropout
-        return dp1_out_seg, dp2_out_seg, dp3_out_seg, dp4_out_seg
+        print('oh here')
+        return features,dp1_out_seg, dp2_out_seg, dp3_out_seg, dp4_out_seg
 

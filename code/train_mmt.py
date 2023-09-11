@@ -132,7 +132,8 @@ if __name__ == "__main__":
 
     def create_model(ema=False):
         # Network definition
-        net = VNet(n_channels=1, n_classes=num_classes, normalization='batchnorm', has_dropout=True, pyramid_has_dropout=True)
+        #, pyramid_has_dropout=True
+        net = VNet(n_channels=1, n_classes=num_classes, normalization='batchnorm', has_dropout=True)
         model = net.cuda()
         if ema:
             for param in model.parameters():
@@ -162,6 +163,10 @@ if __name__ == "__main__":
     #writer = SummaryWriter(snapshot_path+'/log')
     logging.info("{} itertations per epoch".format(len(trainloader)))
 
+    max_queue_size=100
+    #create a queue to store all the negative keys --> maximum size is 100
+    negative_keys=queue.Queue()
+
     iter_num = 0
     max_epoch = max_iterations//len(trainloader)+1
     lr_ = base_lr
@@ -181,16 +186,17 @@ if __name__ == "__main__":
             # distill: 
             # student bs=4
             
-            outputs_main, outputs_aux1, outputs_aux2, outputs_aux3 = model(volume_batch)
-            outputs_main_soft = F.softmax(outputs_main / temperature, dim=1)
+            student_encoder_output,outputs = model(volume_batch)
+            #print(len(outputs))
+            outputs_main_soft = F.softmax(outputs, dim=1)
             # outputs_aux1_soft = F.softmax(outputs_aux1 / temperature, dim=1)
             # outputs_aux2_soft = F.softmax(outputs_aux2 / temperature, dim=1)
             # outputs_aux3_soft = F.softmax(outputs_aux3 / temperature, dim=1)
 
             # teacher bs=2
             with torch.no_grad():
-                ema_outputs_main, ema_outputs_aux1, ema_outputs_aux2, ema_outputs_aux3 = ema_model(ema_inputs)
-            ema_outputs_main_soft = F.softmax(ema_outputs_main / temperature, dim=1)
+                teacher_encoder_output,ema_output = ema_model(ema_inputs)
+            ema_outputs_main_soft = F.softmax(ema_output, dim=1)
             
             
             # ema_outputs_aux1_soft = F.softmax(ema_outputs_aux1 / temperature, dim=1)
@@ -201,14 +207,14 @@ if __name__ == "__main__":
             # 1. L_sup bs=2 (labeled)
             if mt: 
                 ### the last layer
-                loss_seg = F.cross_entropy(outputs_main[:labeled_bs], label_batch[:labeled_bs])
+                loss_seg = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
                 loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
                 supervised_loss = 0.5*(loss_seg+loss_seg_dice)
 
             if mmt: 
                 ##IS THIS WHERE I MUST CHANGE?
                 ### hierarchical loss
-                loss_seg_main = F.cross_entropy(outputs_main[:labeled_bs], label_batch[:labeled_bs])
+                loss_seg_main = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
                 # loss_seg_aux1 = F.cross_entropy(outputs_aux1[:labeled_bs], label_batch[:labeled_bs])
                 # loss_seg_aux2 = F.cross_entropy(outputs_aux2[:labeled_bs], label_batch[:labeled_bs])
                 # loss_seg_aux3 = F.cross_entropy(outputs_aux3[:labeled_bs], label_batch[:labeled_bs])
@@ -229,22 +235,31 @@ if __name__ == "__main__":
             # 2. L_con (labeled and unlabeled)
             ### hierarchical consistency
             ##IS THIS WHERE I MUST CHANGE?
-            consistency_main_dist = (ema_outputs_main_soft - outputs_main_soft)**2
+            #consistency_main_dist = (ema_outputs_main_soft - outputs_main_soft)**2
             # consistency_aux1_dist = (ema_outputs_aux1_soft - outputs_aux1_soft)**2
             # consistency_aux2_dist = (ema_outputs_aux2_soft - outputs_aux2_soft)**2
             # consistency_aux3_dist = (ema_outputs_aux3_soft - outputs_aux3_soft)**2
-            consistency_main_dist = torch.mean(consistency_main_dist)
+            #consistency_main_dist = torch.mean(consistency_main_dist)
             # consistency_aux1_dist = torch.mean(consistency_aux1_dist)
             # consistency_aux2_dist = torch.mean(consistency_aux2_dist)
             # consistency_aux3_dist = torch.mean(consistency_aux3_dist)
-            consistency_dist = consistency_main_dist #+ w1 * consistency_aux1_dist + w2 * consistency_aux2_dist + w3 * consistency_aux3_dist
+            #consistency_dist = consistency_main_dist #+ w1 * consistency_aux1_dist + w2 * consistency_aux2_dist + w3 * consistency_aux3_dist
 
+            # consistency_weight = get_current_consistency_weight(iter_num//150)
+            # consistency_loss = consistency_weight * consistency_dist
             consistency_weight = get_current_consistency_weight(iter_num//150)
+            consistency_dist = consistency_criterion(outputs, ema_output)
+            consistency_dist = torch.mean(consistency_dist)
             consistency_loss = consistency_weight * consistency_dist
+
+
+            #losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+
+            contrastive_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
             
 
             # total loss
-            loss = supervised_loss + consistency_loss  #+ contrastive_loss#+contrastive_loss here
+            loss = supervised_loss + consistency_loss  + contrastive_loss #+contrastive_loss here
 
             optimizer.zero_grad()
             loss.backward()
