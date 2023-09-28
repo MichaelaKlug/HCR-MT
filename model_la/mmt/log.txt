@@ -4,3 +4,31 @@
 [10:43:40.181] 8 itertations per epoch
 [10:45:16.810] Namespace(root_path='../data/2018LA_Seg_Training Set', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
 [10:45:16.983] 8 itertations per epoch
+[17:39:47.917] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[17:39:48.352] 8 itertations per epoch
+[17:40:43.628] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[17:40:43.965] 8 itertations per epoch
+[18:29:53.599] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[18:29:53.759] 8 itertations per epoch
+[18:31:46.042] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[18:31:46.237] 8 itertations per epoch
+[18:34:14.523] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[18:34:14.683] 8 itertations per epoch
+[18:35:27.024] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[18:35:27.200] 8 itertations per epoch
+[18:36:29.150] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[18:36:29.327] 8 itertations per epoch
+[18:42:18.232] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[18:42:18.547] 8 itertations per epoch
+[18:50:23.459] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[18:50:23.743] 8 itertations per epoch
+[21:08:46.699] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[21:08:46.993] 8 itertations per epoch
+[21:09:20.937] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[21:09:21.110] 8 itertations per epoch
+[21:29:49.251] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[21:29:49.502] 8 itertations per epoch
+[14:42:58.312] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[14:42:58.569] 8 itertations per epoch
+[14:44:25.014] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[14:44:25.183] 8 itertations per epoch

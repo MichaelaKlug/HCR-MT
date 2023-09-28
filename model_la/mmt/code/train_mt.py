@@ -1,7 +1,7 @@
 import os
 import sys
 from tqdm import tqdm
-from tensorboardX import SummaryWriter
+#from tensorboardX import SummaryWriter
 import shutil
 import argparse
 import logging
@@ -9,6 +9,7 @@ import time
 import random
 import numpy as np
 import pdb
+import queue
 
 import torch
 import torch.optim as optim
@@ -29,8 +30,9 @@ parser.add_argument('--exp', type=str,  default='mt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
-parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
-parser.add_argument('--labeled_bs', type=int, default=2, help='labeled_batch_size per gpu')
+#was 4 and 2 making 2 and 1
+parser.add_argument('--batch_size', type=int, default=2, help='batch_size per gpu')
+parser.add_argument('--labeled_bs', type=int, default=1, help='labeled_batch_size per gpu')
 
 parser.add_argument('--base_lr', type=float,  default=0.01, help='maximum epoch number to train')
 parser.add_argument('--deterministic', type=int,  default=1, help='whether use deterministic training')
@@ -70,7 +72,7 @@ def update_ema_variables(model, ema_model, alpha, global_step):
     # Use the true average until the exponential average is more correct
     alpha = min(1 - 1 / (global_step + 1), alpha)
     for ema_param, param in zip(ema_model.parameters(), model.parameters()):
-        ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
+        ema_param.data.mul_(alpha).add_(param.data, alpha=1 - alpha)
 
 if __name__ == "__main__":
     ## make logger file
@@ -120,7 +122,7 @@ if __name__ == "__main__":
     
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
-    trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=4, pin_memory=True, worker_init_fn=worker_init_fn)
+    trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=0, pin_memory=True, worker_init_fn=worker_init_fn)
 
     model.train()
     ema_model.train()
@@ -133,8 +135,14 @@ if __name__ == "__main__":
     else:
         assert False, args.consistency_type
 
-    writer = SummaryWriter(snapshot_path+'/log')
+    #writer = SummaryWriter(snapshot_path+'/log')
     logging.info("{} itertations per epoch".format(len(trainloader)))
+
+
+    max_queue_size=100
+    #create a queue to store all the negative keys --> maximum size is 100
+    negative_keys=queue.Queue()
+
 
     iter_num = 0
     max_epoch = max_iterations//len(trainloader)+1 
@@ -152,11 +160,17 @@ if __name__ == "__main__":
             ema_inputs = volume_batch + noise
 
             # student bs=4
-            outputs = model(volume_batch)
+            student_encoder_output,outputs = model(volume_batch)
+            #student_encoder_output = torch.tensor(student_encoder_output)
+            # student_encoder_output=np.asarray(student_encoder_output)
+            # student_encoder_output = torch.FloatTensor(student_encoder_output)
+            # print(type(student_encoder_output))
+            # print(type(outputs))
+            
             
             # teacher bs=2
             with torch.no_grad():
-                ema_output = ema_model(ema_inputs)
+                teacher_encoder_output,ema_output = ema_model(ema_inputs)
 
             ## calculate the loss
             # L_sup bs=2
@@ -171,8 +185,22 @@ if __name__ == "__main__":
             consistency_dist = torch.mean(consistency_dist)
             consistency_loss = consistency_weight * consistency_dist
 
+
+            #cont_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            los=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            # print(type(consistency_loss))
+            # print(type(los))
+            # if negative_keys.qsize()>=100:
+            #     negative_keys.get()
+            # negative_keys.put(teacher_encoder_output)
+
+
+            # print(type(consistency_weight))
+            # print(type(cont_loss))
+            #contrastive_loss= consistency_weight * cont_loss
+        
             # total loss
-            loss = supervised_loss + consistency_loss
+            loss = supervised_loss + consistency_loss + los#+ contrastive_loss
 
             optimizer.zero_grad()
             loss.backward()
@@ -180,45 +208,45 @@ if __name__ == "__main__":
             update_ema_variables(model, ema_model, args.ema_decay, iter_num)
 
             iter_num = iter_num + 1
-            writer.add_scalar('lr', lr_, iter_num)
-            writer.add_scalar('loss/loss', loss, iter_num)
-            writer.add_scalar('loss/loss_seg', loss_seg, iter_num)
-            writer.add_scalar('loss/loss_seg_dice', loss_seg_dice, iter_num)
-            writer.add_scalar('train/consistency_loss', consistency_loss, iter_num)
-            writer.add_scalar('train/consistency_weight', consistency_weight, iter_num)
-            writer.add_scalar('train/consistency_dist', consistency_dist, iter_num)
+            # writer.add_scalar('lr', lr_, iter_num)
+            # writer.add_scalar('loss/loss', loss, iter_num)
+            # writer.add_scalar('loss/loss_seg', loss_seg, iter_num)
+            # writer.add_scalar('loss/loss_seg_dice', loss_seg_dice, iter_num)
+            # writer.add_scalar('train/consistency_loss', consistency_loss, iter_num)
+            # writer.add_scalar('train/consistency_weight', consistency_weight, iter_num)
+            # writer.add_scalar('train/consistency_dist', consistency_dist, iter_num)
 
             logging.info('iteration %d : loss : %f cons_dist: %f, loss_weight: %f' %
                          (iter_num, loss.item(), consistency_dist.item(), consistency_weight))
             if iter_num % 50 == 0:
                 image = volume_batch[0, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
                 grid_image = make_grid(image, 5, normalize=True)
-                writer.add_image('train/Image', grid_image, iter_num)
+                #writer.add_image('train/Image', grid_image, iter_num)
 
                 # image = outputs_soft[0, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
                 image = torch.max(outputs_soft[0, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
                 image = utils.decode_seg_map_sequence(image)
                 grid_image = make_grid(image, 5, normalize=False)
-                writer.add_image('train/Predicted_label', grid_image, iter_num)
+                #writer.add_image('train/Predicted_label', grid_image, iter_num)
 
                 image = label_batch[0, :, :, 20:61:10].permute(2, 0, 1)
                 grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                writer.add_image('train/Groundtruth_label', grid_image, iter_num)
+                #writer.add_image('train/Groundtruth_label', grid_image, iter_num)
 
                 #####
                 image = volume_batch[-1, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
                 grid_image = make_grid(image, 5, normalize=True)
-                writer.add_image('unlabel/Image', grid_image, iter_num)
+                #writer.add_image('unlabel/Image', grid_image, iter_num)
 
                 # image = outputs_soft[-1, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
                 image = torch.max(outputs_soft[-1, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
                 image = utils.decode_seg_map_sequence(image)
                 grid_image = make_grid(image, 5, normalize=False)
-                writer.add_image('unlabel/Predicted_label', grid_image, iter_num)
+                #writer.add_image('unlabel/Predicted_label', grid_image, iter_num)
 
                 image = label_batch[-1, :, :, 20:61:10].permute(2, 0, 1)
                 grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                writer.add_image('unlabel/Groundtruth_label', grid_image, iter_num)
+                #writer.add_image('unlabel/Groundtruth_label', grid_image, iter_num)
 
             ## change lr
             if iter_num % 2500 == 0:
@@ -238,4 +266,4 @@ if __name__ == "__main__":
     save_mode_path = os.path.join(snapshot_path, 'iter_'+str(max_iterations)+'.pth')
     torch.save(model.state_dict(), save_mode_path)
     logging.info("save model to {}".format(save_mode_path))
-    writer.close()
+    #writer.close()

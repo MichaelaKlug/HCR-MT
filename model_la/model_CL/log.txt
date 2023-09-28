@@ -1,0 +1,1 @@
+[14:44:17.182] Namespace(root_path='../data/cropped_images', exp='model_CL', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)

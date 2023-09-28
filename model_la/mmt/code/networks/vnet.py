@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+import numpy as np
 
 class ConvBlock(nn.Module):
     def __init__(self, n_stages, n_filters_in, n_filters_out, normalization='none'):
@@ -196,7 +197,7 @@ class VNet(nn.Module):
             x5 = self.dropout(x5)
 
         res = [x1, x2, x3, x4, x5]
-
+        
         return res
 
     def decoder(self, features):
@@ -233,10 +234,15 @@ class VNet(nn.Module):
             has_dropout = self.has_dropout
             self.has_dropout = False
         features = self.encoder(input)
+        # print(type(features))
+        # new_features = np.array(features)
+        # new_newfeatures = new_features.cpu()
+        #numpyfeatures=features.numpy().cpu()
+        #encoder_resuts=torch.tensor(numpyfeatures)
         out = self.decoder(features)
         if turnoff_drop:
             self.has_dropout = has_dropout
-        return out
+        return features,out
 
     # def __init_weight(self):
     #     for m in self.modules():

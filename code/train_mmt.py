@@ -18,6 +18,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 
 print(torch.cuda.is_available())
+device = torch.device("cuda:0")
 
 import torch
 import torch.optim as optim
@@ -30,10 +31,13 @@ from torchvision.utils import make_grid
 from networks.vnet_pyramid import VNet
 from dataloaders import utils
 from utils import ramps, losses
-from dataloaders.la_heart import LAHeart, RandomCrop, CenterCrop, RandomRotFlip, ToTensor, TwoStreamBatchSampler
+#from dataloaders.la_heart import LAHeart, RandomCrop, CenterCrop, RandomRotFlip, ToTensor, TwoStreamBatchSampler
+
+from dataloaders.acdc import acdc, RandomCrop, CenterCrop, RandomRotFlip, ToTensor, TwoStreamBatchSampler
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str, default='../data/2018LA_Seg_Training Set', help='Name of Experiment')
+parser.add_argument('--root_path', type=str, default='../data/cropped_images', help='Name of Experiment')
 parser.add_argument('--exp', type=str,  default='mmt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 
@@ -41,7 +45,8 @@ parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum e
 parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
 parser.add_argument('--labeled_bs', type=int, default=2, help='labeled_batch_size per gpu')
 
-parser.add_argument('--base_lr', type=float,  default=0.01, help='maximum epoch number to train')
+#trying 0.001 default was 0.1
+parser.add_argument('--base_lr', type=float,  default=0.001, help='maximum epoch number to train')
 parser.add_argument('--deterministic', type=int,  default=1, help='whether use deterministic training')
 parser.add_argument('--seed', type=int,  default=1337, help='random seed')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
@@ -110,16 +115,16 @@ if __name__ == "__main__":
     logging.info(str(args))
 
     if args.dataset == 'la':
-        num_classes = 2
-        patch_size = (112, 112, 80)
-        db_train = LAHeart(base_dir=train_data_path,
+        num_classes = 4 #put here num_classes=4?
+        patch_size = (112, 112, 80) #would i have to change patch size?
+        db_train = acdc(base_dir=train_data_path,
                            split='train',
                            transform = transforms.Compose([
                               RandomRotFlip(),
                               RandomCrop(patch_size),
                               ToTensor(),
                               ]))
-        db_test = LAHeart(base_dir=train_data_path,
+        db_test = acdc(base_dir=train_data_path,
                            split='test',
                            transform = transforms.Compose([
                                CenterCrop(patch_size),
@@ -252,14 +257,17 @@ if __name__ == "__main__":
             consistency_dist = torch.mean(consistency_dist)
             consistency_loss = consistency_weight * consistency_dist
 
+            print('just before')
+            losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
 
-            #losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
-
-            contrastive_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            # contrastive_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            # if negative_keys.qsize()>=100:
+            #     negative_keys.get()
+            # negative_keys.put(teacher_encoder_output)
             
 
             # total loss
-            loss = supervised_loss + consistency_loss  + contrastive_loss #+contrastive_loss here
+            loss = supervised_loss + consistency_loss #+ contrastive_loss #+contrastive_loss here
 
             optimizer.zero_grad()
             loss.backward()

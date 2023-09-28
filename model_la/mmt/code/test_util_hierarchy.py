@@ -7,19 +7,34 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 from scipy import ndimage
-
+import matplotlib.pyplot as plt
 
 def test_all_case(net, image_list, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4, save_result=True, test_save_path=None, preproc_fn=None):
     total_metric = 0.0
+    i=0
     for image_path in tqdm(image_list):
         id = image_path.split('/')[-1]
-        h5f = h5py.File(image_path, 'r')
-        image = h5f['image'][:]
-        label = h5f['label'][:]
+        imgpath=image_path+'/img_cropped.nii.gz'
+        maskpath=image_path+'/mask_cropped.nii.gz'
+        image=nib.load(imgpath).get_fdata()
+        label=nib.load(maskpath).get_fdata()
+        # h5f = h5py.File(image_path, 'r')
+        # image = h5f['image'][:]
+        # label = h5f['label'][:]
         if preproc_fn is not None:
             image = preproc_fn(image)
         prediction, score_map = test_single_case(net, image, stride_xy, stride_z, patch_size, num_classes=num_classes)
         prediction = ndimage.binary_fill_holes(prediction)
+        if i==0:
+            i+=1
+            print('here!!')
+            # Display a 2D slice (e.g., the middle slice of the first volume)
+            slice_index = image.shape[-1] // 2  # Choose a middle slice
+            plt.imshow(image[:, :, slice_index], cmap='gray')
+            plt.title("NIfTI Image Slice")
+            plt.colorbar()
+            plt.savefig('sample_plot.png')
+            # plt.show()
 
         if np.sum(prediction)==0:
             single_metric = (0,0,0,0)
@@ -80,8 +95,9 @@ def test_single_case(net, image, stride_xy, stride_z, patch_size, num_classes=1)
                 test_patch = image[xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]]
                 test_patch = np.expand_dims(np.expand_dims(test_patch,axis=0),axis=0).astype(np.float32)
                 test_patch = torch.from_numpy(test_patch).cuda()
-                y1, outputs_aux1, outputs_aux2, outputs_aux3 = net(test_patch)
-                # y1 = net(test_patch)
+                #y1, outputs_aux1, outputs_aux2, outputs_aux3 = net(test_patch)
+                _,y1 = net(test_patch)
+                #y1=y1.cpu().data.numpy()
                 y = F.softmax(y1, dim=1)
                 y = y.cpu().data.numpy()
                 y = y[0,:,:,:,:]

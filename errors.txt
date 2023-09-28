@@ -1,0 +1,45 @@
+Traceback (most recent call last):
+  File "/home-mscluster/mklug/anaconda3/envs/research/lib/python3.11/site-packages/numpy/core/__init__.py", line 23, in <module>
+    from . import multiarray
+  File "/home-mscluster/mklug/anaconda3/envs/research/lib/python3.11/site-packages/numpy/core/multiarray.py", line 10, in <module>
+    from . import overrides
+  File "/home-mscluster/mklug/anaconda3/envs/research/lib/python3.11/site-packages/numpy/core/overrides.py", line 6, in <module>
+    from numpy.core._multiarray_umath import (
+ImportError: libblas.so.3: cannot open shared object file: No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home-mscluster/mklug/HCR-MT/code/train_mmt.py", line 4, in <module>
+    import torch
+  File "/home-mscluster/mklug/anaconda3/envs/research/lib/python3.11/site-packages/torch/__init__.py", line 934, in <module>
+    from .storage import _StorageBase, TypedStorage, _LegacyStorage, UntypedStorage, _warn_typed_storage_removal
+  File "/home-mscluster/mklug/anaconda3/envs/research/lib/python3.11/site-packages/torch/storage.py", line 12, in <module>
+    import numpy as np
+  File "/home-mscluster/mklug/anaconda3/envs/research/lib/python3.11/site-packages/numpy/__init__.py", line 140, in <module>
+    from . import core
+  File "/home-mscluster/mklug/anaconda3/envs/research/lib/python3.11/site-packages/numpy/core/__init__.py", line 49, in <module>
+    raise ImportError(msg)
+ImportError: 
+
+IMPORTANT: PLEASE READ THIS FOR ADVICE ON HOW TO SOLVE THIS ISSUE!
+
+Importing the numpy C-extensions failed. This error can happen for
+many reasons, often due to issues with your setup or how NumPy was
+installed.
+
+We have compiled some common reasons and troubleshooting tips at:
+
+    https://numpy.org/devdocs/user/troubleshooting-importerror.html
+
+Please note and check the following:
+
+  * The Python version is: Python3.11 from "/home-mscluster/mklug/anaconda3/envs/research/bin/python"
+  * The NumPy version is: "1.23.1"
+
+and make sure that they are the versions you expect.
+Please carefully study the documentation linked above for further help.
+
+Original error was: libblas.so.3: cannot open shared object file: No such file or directory
+
+srun: error: mscluster47: task 0: Exited with exit code 1
