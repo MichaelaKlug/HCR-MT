@@ -189,15 +189,15 @@ class VNet(nn.Module):
         x3_dw = self.block_three_dw(x3)
 
         x4 = self.block_four(x3_dw)
-        x4_dw = self.block_four_dw(x4)
+        #x4_dw = self.block_four_dw(x4)
 
-        x5 = self.block_five(x4_dw)
+        #x5 = self.block_five(x4_dw)
         # x5 = F.dropout3d(x5, p=0.5, training=True)
         if self.has_dropout:
-            x5 = self.dropout(x5)
+            x4 = self.dropout(x4)
 
-        res = [x1, x2, x3, x4, x5]
-        
+        # res = [x1, x2, x3, x4, x5]
+        res = [x1, x2, x3, x4]
         return res
 
     def decoder(self, features):
@@ -205,13 +205,13 @@ class VNet(nn.Module):
         x2 = features[1]
         x3 = features[2]
         x4 = features[3]
-        x5 = features[4]
+       # x5 = features[4]
 
-        x5_up = self.block_five_up(x5)
-        x5_up = x5_up + x4
+        #x5_up = self.block_five_up(x5)
+        #x5_up = x5_up + x4
 
-        x6 = self.block_six(x5_up)
-        x6_up = self.block_six_up(x6)
+        #x6 = self.block_six(x5_up)
+        x6_up = self.block_six_up(x4)
         x6_up = x6_up + x3
 
         x7 = self.block_seven(x6_up)

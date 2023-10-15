@@ -43,8 +43,8 @@ parser.add_argument('--exp', type=str,  default='mmt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
-parser.add_argument('--batch_size', type=int, default=2, help='batch_size per gpu')
-parser.add_argument('--labeled_bs', type=int, default=1, help='labeled_batch_size per gpu')
+parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
+parser.add_argument('--labeled_bs', type=int, default=2, help='labeled_batch_size per gpu')
 
 #trying 0.001 default was 0.1
 parser.add_argument('--base_lr', type=float,  default=0.01, help='maximum epoch number to train')
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 
     if args.dataset == 'la':
         num_classes = 4 
-        patch_size = (112, 112, 80) 
+        patch_size = (112, 112, 8) 
         db_train = acdc(base_dir=train_data_path,
                            split='train',
                            transform = transforms.Compose([
@@ -203,7 +203,9 @@ if __name__ == "__main__":
            
             ## calculate the loss
             # 1. L_sup bs=2 (labeled)
-  
+            # TODO : make code work
+            #// TODO : lose mind
+            print(outputs)
             loss_seg = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
             outputs_main_soft = F.softmax(outputs, dim=1)
             #loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)

@@ -15,14 +15,6 @@ def dice_loss(outputs, targets):
         intersection = torch.sum(pred_class * target_class) #is this correct?
 
         union = torch.sum(pred_class) + torch.sum(target_class)
-
-        # intersection = np.sum((y_true == class_id) & (y_pred == class_id))
-        # true_count = np.sum(y_true == class_id)
-        # pred_count = np.sum(y_pred == class_id)
-        
-        # # Calculate the Dice Score
-        # dice = (2.0 * intersection) / (true_count + pred_count)
-
         # Calculate the Dice coefficient for the current class
         dice = (2 * intersection + smooth) / (union + smooth)
 
