@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 def test_all_case(net, image_list, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4, save_result=True, test_save_path=None, preproc_fn=None):
     total_metric = 0.0
-    i=0
+    #i=0
     for image_path in tqdm(image_list):
         id = image_path.split('/')[-1]
         imgpath=image_path+'/img_cropped.nii.gz'
@@ -25,21 +25,13 @@ def test_all_case(net, image_list, num_classes, patch_size=(112, 112, 80), strid
             image = preproc_fn(image)
         prediction, score_map = test_single_case(net, image, stride_xy, stride_z, patch_size, num_classes=num_classes)
         prediction = ndimage.binary_fill_holes(prediction)
-        if i==0:
-            i+=1
-            print('here!!')
-            # Display a 2D slice (e.g., the middle slice of the first volume)
-            slice_index = image.shape[-1] // 2  # Choose a middle slice
-            plt.imshow(image[:, :, slice_index], cmap='gray')
-            plt.title("NIfTI Image Slice")
-            plt.colorbar()
-            plt.savefig('sample_plot.png')
-            # plt.show()
+        
 
         if np.sum(prediction)==0:
             single_metric = (0,0,0,0)
         else:
             single_metric = calculate_metric_percase(prediction, label[:])
+            print('unique values are: ',np.unique(prediction),np.unique( label[:]))
         total_metric += np.asarray(single_metric)
 
         if save_result:

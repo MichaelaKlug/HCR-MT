@@ -13,21 +13,38 @@ def test_all_case(net, image_list, num_classes, patch_size=(112, 112, 80), strid
     total_metric = 0.0
     for image_path in tqdm(image_list):
         id = image_path.split('/')[-1]
-        h5f = h5py.File(image_path, 'r')
-        image = h5f['image'][:]
-        label = h5f['label'][:]
+        # h5f = h5py.File(image_path, 'r')
+        # image = h5f['image'][:]
+        # label = h5f['label'][:]
+        imgpath=image_path+'/img_cropped.nii.gz'
+        maskpath=image_path+'/mask_cropped.nii.gz'
+        image=nib.load(imgpath).get_fdata()
+        label=nib.load(maskpath).get_fdata()
         if preproc_fn is not None:
             image = preproc_fn(image)
         prediction, score_map = test_single_case(net, image, stride_xy, stride_z, patch_size, num_classes=num_classes)
-        prediction = ndimage.binary_fill_holes(prediction)
-
-        if np.sum(prediction)==0:
-            single_metric = (0,0,0,0)
-        else:
-            single_metric = calculate_metric_percase(prediction, label[:])
-        total_metric += np.asarray(single_metric)
+        # print('prediction size is: ',prediction.shape)
+        # print('score map size is: ',score_map.shape)
+        print('unique values are 1: ',np.unique(prediction),np.unique( label[:]))
+        #prediction = ndimage.binary_fill_holes(prediction)
+        print('unique values are 2: ',np.unique(prediction),np.unique( label[:]))
+        for class_id in range(4):
+            prediction_class = prediction == class_id
+            label_class = label == class_id
+            prediction_class = ndimage.binary_fill_holes(prediction_class)
+            #if np.unique(prediction_class).
+            if np.unique(prediction_class).shape[0]!=2:
+                single_metric = (0,0,0,0)
+            else:
+                single_metric = calculate_metric_percase(prediction_class, label_class)
+            
+           
+            #print('len ', len(np.unique(prediction_class)))
+            print('unique values are 3: ',np.unique(prediction_class),np.unique(label_class))
+            total_metric += np.asarray(single_metric)
 
         if save_result:
+            print('should be here??')
             nib.save(nib.Nifti1Image(prediction.astype(np.float32), np.eye(4)), test_save_path + id + "_pred.nii.gz")
             nib.save(nib.Nifti1Image(image[:].astype(np.float32), np.eye(4)), test_save_path + id + "_img.nii.gz")
             nib.save(nib.Nifti1Image(label[:].astype(np.float32), np.eye(4)), test_save_path + id + "_gt.nii.gz")
@@ -67,8 +84,9 @@ def test_single_case(net, image, stride_xy, stride_z, patch_size, num_classes=1)
     sx = math.ceil((ww - patch_size[0]) / stride_xy) + 1
     sy = math.ceil((hh - patch_size[1]) / stride_xy) + 1
     sz = math.ceil((dd - patch_size[2]) / stride_z) + 1
-    print("{}, {}, {}".format(sx, sy, sz))
+    # print("{}, {}, {}".format(sx, sy, sz))
     score_map = np.zeros((num_classes, ) + image.shape).astype(np.float32)
+    # print('score map shape is: ', score_map.shape)
     cnt = np.zeros(image.shape).astype(np.float32)
 
     for x in range(0, sx):
@@ -80,16 +98,21 @@ def test_single_case(net, image, stride_xy, stride_z, patch_size, num_classes=1)
                 test_patch = image[xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]]
                 test_patch = np.expand_dims(np.expand_dims(test_patch,axis=0),axis=0).astype(np.float32)
                 test_patch = torch.from_numpy(test_patch).cuda()
-                y1 = net(test_patch)
+                _,y1 = net(test_patch)
+                # print('out shape is ', y1.shape)
                 y = F.softmax(y1, dim=1)
+                # print('y shape is ',y.shape)
                 y = y.cpu().data.numpy()
                 y = y[0,:,:,:,:]
+                # print('y shape 222 is ',y.shape)
                 score_map[:, xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]] \
                   = score_map[:, xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]] + y
                 cnt[xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]] \
                   = cnt[xs:xs+patch_size[0], ys:ys+patch_size[1], zs:zs+patch_size[2]] + 1
     score_map = score_map/np.expand_dims(cnt,axis=0)
+    
     label_map = np.argmax(score_map, axis = 0)
+    # print('final map size ' , score_map.shape)
     if add_pad:
         label_map = label_map[wl_pad:wl_pad+w,hl_pad:hl_pad+h,dl_pad:dl_pad+d]
         score_map = score_map[:,wl_pad:wl_pad+w,hl_pad:hl_pad+h,dl_pad:dl_pad+d]
@@ -173,5 +196,5 @@ def calculate_metric_percase(pred, gt):
     jc = metric.binary.jc(pred, gt)
     hd = metric.binary.hd95(pred, gt)
     asd = metric.binary.asd(pred, gt)
-
     return dice, jc, hd, asd
+  

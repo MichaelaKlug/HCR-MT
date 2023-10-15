@@ -3,15 +3,62 @@ from torch.nn import functional as F
 import numpy as np
 import queue
 
-def dice_loss(score, target):
-    target = target.float()
+def dice_loss(outputs, targets):
+    num_classes=4
     smooth = 1e-5
-    intersect = torch.sum(score * target)
-    y_sum = torch.sum(target * target)
-    z_sum = torch.sum(score * score)
-    loss = (2 * intersect + smooth) / (z_sum + y_sum + smooth)
-    loss = 1 - loss
+    loss=0
+    for class_idx in range(num_classes):
+        # Extract the predictions and ground truth for the current class
+        pred_class = outputs[:, class_idx, :, :, :]
+        target_class = (targets == class_idx).float()
+
+        intersection = torch.sum(pred_class * target_class) #is this correct?
+
+        union = torch.sum(pred_class) + torch.sum(target_class)
+
+        # intersection = np.sum((y_true == class_id) & (y_pred == class_id))
+        # true_count = np.sum(y_true == class_id)
+        # pred_count = np.sum(y_pred == class_id)
+        
+        # # Calculate the Dice Score
+        # dice = (2.0 * intersection) / (true_count + pred_count)
+
+        # Calculate the Dice coefficient for the current class
+        dice = (2 * intersection + smooth) / (union + smooth)
+
+        # Add the Dice coefficient for the current class to the loss
+        loss += (1 - dice)
+
+    # Average the loss over all classes
+    loss /= num_classes
+
     return loss
+    #smooth = 1e-5
+    # print('score is ', score.shape)
+    # print('target is ', target.shape)
+    # intersection = torch.sum(score * target, dim=(2, 3))  # Sum along height and width dimensions
+    # y_sum = torch.sum(score, dim=(2, 3))
+    # z_sum = torch.sum(target, dim=(2, 3))
+
+    # # Calculate the Dice coefficient for each class (class-wise)
+    # dice_coefficient = (2 * intersection + smooth) / (z_sum + y_sum + smooth)
+
+    # # Calculate the loss as the complement of the Dice coefficient (1 - Dice)
+    # loss = 1 - dice_coefficient
+
+    # # Calculate the average loss over all classes
+    # average_loss = torch.mean(loss, dim=1)  # Take the mean along the num_classes dimension
+
+    # return average_loss
+
+    # target = target.float()
+    # smooth = 1e-5
+    # intersect = torch.sum(score * target)
+    # y_sum = torch.sum(target * target)
+    # z_sum = torch.sum(score * score)
+    # loss = (2 * intersect + smooth) / (z_sum + y_sum + smooth)
+    # loss = 1 - loss
+    # return loss
 
 def dice_loss1(score, target):
     target = target.float()
@@ -66,6 +113,7 @@ def entropy_loss(p,C=2):
 #     return answer
 
 def contrastive_loss(fs,ft_plus,ftminus_queue):
+    
      # Normalize the embeddings
         student_embeddings = F.normalize(fs, dim=1)
         teacher_embeddings = F.normalize(ft_plus, dim=1)
@@ -84,6 +132,7 @@ def contrastive_loss(fs,ft_plus,ftminus_queue):
         #self.update_queue(student_embeddings)
 
         return loss
+
 def softmax_dice_loss(input_logits, target_logits):
     """Takes softmax on both sides and returns MSE loss
 

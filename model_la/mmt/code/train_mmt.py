@@ -13,6 +13,7 @@ import numpy as np
 import pdb
 import os
 import queue 
+from torch import nn
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -28,7 +29,7 @@ import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
 # from networks.hierarchical_vnet import VNet
-from networks.vnet_pyramid import VNet
+from networks.vnet import VNet
 from dataloaders import utils
 from utils import ramps, losses
 #from dataloaders.la_heart import LAHeart, RandomCrop, CenterCrop, RandomRotFlip, ToTensor, TwoStreamBatchSampler
@@ -42,11 +43,11 @@ parser.add_argument('--exp', type=str,  default='mmt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 
 parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
-parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
-parser.add_argument('--labeled_bs', type=int, default=2, help='labeled_batch_size per gpu')
+parser.add_argument('--batch_size', type=int, default=2, help='batch_size per gpu')
+parser.add_argument('--labeled_bs', type=int, default=1, help='labeled_batch_size per gpu')
 
 #trying 0.001 default was 0.1
-parser.add_argument('--base_lr', type=float,  default=0.001, help='maximum epoch number to train')
+parser.add_argument('--base_lr', type=float,  default=0.01, help='maximum epoch number to train')
 parser.add_argument('--deterministic', type=int,  default=1, help='whether use deterministic training')
 parser.add_argument('--seed', type=int,  default=1337, help='random seed')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
@@ -102,6 +103,8 @@ def update_ema_variables(model, ema_model, alpha, global_step):
         ema_param.data.mul_(alpha).add_(1 - alpha, param.data)
 
 if __name__ == "__main__":
+    num_classes = 4 
+    #print('numb classes = ',num_classes)
     ## make logger file
     if not os.path.exists(snapshot_path):
         os.makedirs(snapshot_path)
@@ -115,7 +118,7 @@ if __name__ == "__main__":
     logging.info(str(args))
 
     if args.dataset == 'la':
-        num_classes = 4 #put here num_classes=4?
+        num_classes = 4 
         patch_size = (112, 112, 80) #would i have to change patch size?
         db_train = acdc(base_dir=train_data_path,
                            split='train',
@@ -139,7 +142,9 @@ if __name__ == "__main__":
         # Network definition
         #, pyramid_has_dropout=True
         net = VNet(n_channels=1, n_classes=num_classes, normalization='batchnorm', has_dropout=True)
-        model = net.cuda()
+
+        #model = nn.DataParallel(net).cuda()
+        model=net.cuda()
         if ema:
             for param in model.parameters():
                 param.detach_()
@@ -190,19 +195,21 @@ if __name__ == "__main__":
 
             # distill: 
             # student bs=4
-            
-            student_encoder_output,outputs = model(volume_batch)
+            # print('we here! ',label_batch[:labeled_bs].shape)
+            student_encoder_output,outputs= model(volume_batch)
             #print(len(outputs))
             outputs_main_soft = F.softmax(outputs, dim=1)
+            
+            #print('student= ',outputs_main_soft)
             # outputs_aux1_soft = F.softmax(outputs_aux1 / temperature, dim=1)
             # outputs_aux2_soft = F.softmax(outputs_aux2 / temperature, dim=1)
             # outputs_aux3_soft = F.softmax(outputs_aux3 / temperature, dim=1)
 
             # teacher bs=2
             with torch.no_grad():
-                teacher_encoder_output,ema_output = ema_model(ema_inputs)
+                teacher_encoder_output,ema_output  = ema_model(ema_inputs)
             ema_outputs_main_soft = F.softmax(ema_output, dim=1)
-            
+            #print('teacher= ', ema_outputs_main_soft)
             
             # ema_outputs_aux1_soft = F.softmax(ema_outputs_aux1 / temperature, dim=1)
             # ema_outputs_aux2_soft = F.softmax(ema_outputs_aux2 / temperature, dim=1)
@@ -212,8 +219,11 @@ if __name__ == "__main__":
             # 1. L_sup bs=2 (labeled)
             if mt: 
                 ### the last layer
+                
                 loss_seg = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
+                # loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
+                loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs], label_batch[:labeled_bs])
+
                 supervised_loss = 0.5*(loss_seg+loss_seg_dice)
 
             if mmt: 
@@ -223,7 +233,9 @@ if __name__ == "__main__":
                 # loss_seg_aux1 = F.cross_entropy(outputs_aux1[:labeled_bs], label_batch[:labeled_bs])
                 # loss_seg_aux2 = F.cross_entropy(outputs_aux2[:labeled_bs], label_batch[:labeled_bs])
                 # loss_seg_aux3 = F.cross_entropy(outputs_aux3[:labeled_bs], label_batch[:labeled_bs])
-                loss_seg_dice_main = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
+                # loss_seg_dice_main = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
+                loss_seg_dice_main = losses.dice_loss(outputs_main_soft[:labeled_bs], label_batch[:labeled_bs])
+
                 # loss_seg_dice_aux1 = losses.dice_loss(outputs_aux1_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
                 # loss_seg_dice_aux2 = losses.dice_loss(outputs_aux2_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
                 # loss_seg_dice_aux3 = losses.dice_loss(outputs_aux3_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
@@ -257,10 +269,10 @@ if __name__ == "__main__":
             consistency_dist = torch.mean(consistency_dist)
             consistency_loss = consistency_weight * consistency_dist
 
-            print('just before')
-            losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            # print('just before')
+            # # losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
 
-            # contrastive_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
+            # # contrastive_loss=losses.contrastive_loss(student_encoder_output,teacher_encoder_output,negative_keys)
             # if negative_keys.qsize()>=100:
             #     negative_keys.get()
             # negative_keys.put(teacher_encoder_output)

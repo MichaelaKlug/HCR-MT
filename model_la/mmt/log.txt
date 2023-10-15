@@ -32,3 +32,48 @@
 [14:42:58.569] 8 itertations per epoch
 [14:44:25.014] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
 [14:44:25.183] 8 itertations per epoch
+[10:43:54.257] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=4, labeled_bs=2, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[10:43:54.556] 8 itertations per epoch
+[14:24:06.951] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=2, labeled_bs=1, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[14:24:07.233] 16 itertations per epoch
+[14:24:17.948] iteration 1 : loss : 1.094050 cons_dist: 0.022612, loss_weight: 0.000674
+[14:24:18.635] iteration 2 : loss : 1.005162 cons_dist: 0.012085, loss_weight: 0.000674
+[14:24:19.270] iteration 3 : loss : 1.011576 cons_dist: 0.011627, loss_weight: 0.000674
+[14:24:19.905] iteration 4 : loss : 1.047456 cons_dist: 0.013935, loss_weight: 0.000674
+[14:26:32.776] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=2, labeled_bs=1, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[14:26:32.976] 16 itertations per epoch
+[14:26:37.032] iteration 1 : loss : 1.094050 cons_dist: 0.022612, loss_weight: 0.000674
+[14:26:37.694] iteration 2 : loss : 1.005162 cons_dist: 0.012085, loss_weight: 0.000674
+[14:26:38.358] iteration 3 : loss : 1.011576 cons_dist: 0.011627, loss_weight: 0.000674
+[14:26:38.962] iteration 4 : loss : 1.047456 cons_dist: 0.013935, loss_weight: 0.000674
+[14:26:39.587] iteration 5 : loss : 1.104707 cons_dist: 0.011946, loss_weight: 0.000674
+[14:26:40.215] iteration 6 : loss : 1.030551 cons_dist: 0.010447, loss_weight: 0.000674
+[14:27:50.533] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=2, labeled_bs=1, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[14:27:50.713] 16 itertations per epoch
+[14:27:54.166] iteration 1 : loss : 1.094050 cons_dist: 0.022612, loss_weight: 0.000674
+[14:27:54.736] iteration 2 : loss : 1.005162 cons_dist: 0.012085, loss_weight: 0.000674
+[14:27:55.284] iteration 3 : loss : 1.011576 cons_dist: 0.011627, loss_weight: 0.000674
+[14:27:55.814] iteration 4 : loss : 1.047456 cons_dist: 0.013935, loss_weight: 0.000674
+[14:27:56.379] iteration 5 : loss : 1.104707 cons_dist: 0.011946, loss_weight: 0.000674
+[14:27:56.922] iteration 6 : loss : 1.030551 cons_dist: 0.010447, loss_weight: 0.000674
+[14:27:57.498] iteration 7 : loss : 1.078241 cons_dist: 0.007336, loss_weight: 0.000674
+[14:27:58.073] iteration 8 : loss : 1.023457 cons_dist: 0.011106, loss_weight: 0.000674
+[14:27:58.653] iteration 9 : loss : 1.123125 cons_dist: 0.010082, loss_weight: 0.000674
+[14:27:59.235] iteration 10 : loss : 0.993054 cons_dist: 0.008897, loss_weight: 0.000674
+[14:44:10.086] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=2, labeled_bs=1, base_lr=0.001, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[14:44:10.258] 16 itertations per epoch
+[14:44:14.307] iteration 1 : loss : 1.094050 cons_dist: 0.022612, loss_weight: 0.000674
+[14:44:14.880] iteration 2 : loss : 1.005162 cons_dist: 0.012085, loss_weight: 0.000674
+[14:44:15.446] iteration 3 : loss : 1.011576 cons_dist: 0.011627, loss_weight: 0.000674
+[14:44:15.993] iteration 4 : loss : 1.047456 cons_dist: 0.013935, loss_weight: 0.000674
+[14:44:16.567] iteration 5 : loss : 1.104707 cons_dist: 0.011946, loss_weight: 0.000674
+[14:44:17.118] iteration 6 : loss : 1.030551 cons_dist: 0.010447, loss_weight: 0.000674
+[14:44:17.685] iteration 7 : loss : 1.078241 cons_dist: 0.007336, loss_weight: 0.000674
+[14:44:18.226] iteration 8 : loss : 1.023457 cons_dist: 0.011106, loss_weight: 0.000674
+[14:44:18.774] iteration 9 : loss : 1.123125 cons_dist: 0.010082, loss_weight: 0.000674
+[14:44:19.354] iteration 10 : loss : 0.993054 cons_dist: 0.008897, loss_weight: 0.000674
+[14:44:19.922] iteration 11 : loss : 1.058656 cons_dist: 0.012883, loss_weight: 0.000674
+[14:44:20.503] iteration 12 : loss : 0.970866 cons_dist: 0.012510, loss_weight: 0.000674
+[14:44:21.086] iteration 13 : loss : 1.112871 cons_dist: 0.014096, loss_weight: 0.000674
+[21:00:13.417] Namespace(root_path='../data/cropped_images', exp='mmt', dataset='la', max_iterations=6000, batch_size=2, labeled_bs=1, base_lr=0.01, deterministic=1, seed=1337, gpu='0', w0=0.5, w1=0.4, w2=0.05, w3=0.05, mt=0, mmt=1, ema_decay=0.99, consistency_type='mse', consistency=0.1, consistency_rampup=40.0, temperature=1.0)
+[21:00:13.729] 16 itertations per epoch

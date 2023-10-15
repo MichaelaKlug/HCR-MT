@@ -161,11 +161,7 @@ if __name__ == "__main__":
 
             # student bs=4
             student_encoder_output,outputs = model(volume_batch)
-            #student_encoder_output = torch.tensor(student_encoder_output)
-            # student_encoder_output=np.asarray(student_encoder_output)
-            # student_encoder_output = torch.FloatTensor(student_encoder_output)
-            # print(type(student_encoder_output))
-            # print(type(outputs))
+          
             
             
             # teacher bs=2

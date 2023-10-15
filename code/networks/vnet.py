@@ -144,7 +144,7 @@ class Upsampling(nn.Module):
 
 
 class VNet(nn.Module):
-    def __init__(self, n_channels=3, n_classes=2, n_filters=16, normalization='none', has_dropout=False):
+    def __init__(self, n_channels=3, n_classes=4, n_filters=16, normalization='none', has_dropout=False):
         super(VNet, self).__init__()
         self.has_dropout = has_dropout
 
@@ -226,6 +226,7 @@ class VNet(nn.Module):
         if self.has_dropout:
             x9 = self.dropout(x9)
         out = self.out_conv(x9)
+        #print('output shape is ',out.shape)
         return out
 
 

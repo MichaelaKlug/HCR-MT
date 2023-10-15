@@ -143,7 +143,7 @@ class Upsampling(nn.Module):
 
 
 class VNet(nn.Module):
-    def __init__(self, n_channels=3, n_classes=2, n_filters=16, normalization='none', has_dropout=False, pyramid_has_dropout=False):
+    def __init__(self, n_channels=3, n_classes=4, n_filters=16, normalization='none', has_dropout=False, pyramid_has_dropout=False):
         super(VNet, self).__init__()
         self.has_dropout = has_dropout
         self.pyramid_has_dropout = pyramid_has_dropout
@@ -258,5 +258,5 @@ class VNet(nn.Module):
         if turnoff_drop:
             self.has_dropout = has_dropout
         print('oh here')
-        return features,dp1_out_seg, dp2_out_seg, dp3_out_seg, dp4_out_seg
+        return features,dp1_out_seg , dp2_out_seg, dp3_out_seg, dp4_out_seg
 
