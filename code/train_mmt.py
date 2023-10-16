@@ -3,7 +3,7 @@ import sys
 from tqdm import tqdm
 import torch
 #from tensorboardX import SummaryWriter
-#from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 import shutil
 import argparse
 import logging
@@ -42,9 +42,9 @@ parser.add_argument('--root_path', type=str, default='../data/cropped_images', h
 parser.add_argument('--exp', type=str,  default='mmt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 
-parser.add_argument('--max_iterations', type=int,  default=6000, help='maximum epoch number to train')
-parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
-parser.add_argument('--labeled_bs', type=int, default=2, help='labeled_batch_size per gpu')
+parser.add_argument('--max_iterations', type=int,  default=100, help='maximum epoch number to train')
+parser.add_argument('--batch_size', type=int, default=2, help='batch_size per gpu')
+parser.add_argument('--labeled_bs', type=int, default=1, help='labeled_batch_size per gpu')
 
 #trying 0.001 default was 0.1
 parser.add_argument('--base_lr', type=float,  default=0.01, help='maximum epoch number to train')
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     else:
         assert False, args.consistency_type
 
-    #writer = SummaryWriter(snapshot_path+'/log')
+    writer = SummaryWriter()
     logging.info("{} itertations per epoch".format(len(trainloader)))
 
     max_queue_size=100
@@ -205,7 +205,8 @@ if __name__ == "__main__":
             # 1. L_sup bs=2 (labeled)
             # TODO : make code work
             #// TODO : lose mind
-            print(outputs)
+            #
+            # print(outputs)
             loss_seg = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
             outputs_main_soft = F.softmax(outputs, dim=1)
             #loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
@@ -246,45 +247,46 @@ if __name__ == "__main__":
             update_ema_variables(model, ema_model, args.ema_decay, iter_num)
 
             iter_num = iter_num + 1
-            # writer.add_scalar('lr', lr_, iter_num)
-            # writer.add_scalar('loss/loss', loss, iter_num)
-            # writer.add_scalar('loss/loss_seg', loss_seg, iter_num)
-            # writer.add_scalar('loss/loss_seg_dice', loss_seg_dice, iter_num)
-            # writer.add_scalar('train/consistency_loss', consistency_loss, iter_num)
-            # writer.add_scalar('train/consistency_weight', consistency_weight, iter_num)
-            # writer.add_scalar('train/consistency_dist', consistency_dist, iter_num)
+            writer.add_scalar('lr', lr_, iter_num)
+            writer.add_scalar('loss/loss', loss, iter_num)
+            writer.add_scalar('loss/loss_seg', loss_seg, iter_num)
+            writer.add_scalar('loss/loss_seg_dice', loss_seg_dice, iter_num)
+            writer.add_scalar('train/consistency_loss', consistency_loss, iter_num)
+            writer.add_scalar('train/consistency_weight', consistency_weight, iter_num)
+            writer.add_scalar('train/consistency_dist', consistency_dist, iter_num)
+            writer.flush()
 
             logging.info('iteration %d : loss : %f cons_dist: %f, loss_weight: %f' %
                          (iter_num, loss.item(), consistency_dist.item(), consistency_weight))
-            if iter_num % 50 == 0:
-                image = volume_batch[0, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                grid_image = make_grid(image, 5, normalize=True)
+            # if iter_num % 50 == 0:
+            #     image = volume_batch[0, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
+            #     grid_image = make_grid(image, 5, normalize=True)
                 #writer.add_image('train/Image', grid_image, iter_num)
 
-                # image = outputs_soft[0, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                image = torch.max(outputs_main_soft[0, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
-                image = utils.decode_seg_map_sequence(image)
-                grid_image = make_grid(image, 5, normalize=False)
-                #writer.add_image('train/Predicted_label', grid_image, iter_num)
+                # # image = outputs_soft[0, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
+                # image = torch.max(outputs_main_soft[0, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
+                # image = utils.decode_seg_map_sequence(image)
+                # grid_image = make_grid(image, 5, normalize=False)
+                # #writer.add_image('train/Predicted_label', grid_image, iter_num)
 
-                image = label_batch[0, :, :, 20:61:10].permute(2, 0, 1)
-                grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                #writer.add_image('train/Groundtruth_label', grid_image, iter_num)
+                # image = label_batch[0, :, :, 20:61:10].permute(2, 0, 1)
+                # grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
+                # #writer.add_image('train/Groundtruth_label', grid_image, iter_num)
 
-                #####
-                image = volume_batch[-1, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                grid_image = make_grid(image, 5, normalize=True)
+                # #####
+                # image = volume_batch[-1, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
+                # grid_image = make_grid(image, 5, normalize=True)
                 #writer.add_image('unlabel/Image', grid_image, iter_num)
 
-                # image = outputs_soft[-1, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                image = torch.max(outputs_main_soft[-1, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
-                image = utils.decode_seg_map_sequence(image)
-                grid_image = make_grid(image, 5, normalize=False)
-                #writer.add_image('unlabel/Predicted_label', grid_image, iter_num)
+                # # image = outputs_soft[-1, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
+                # image = torch.max(outputs_main_soft[-1, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
+                # image = utils.decode_seg_map_sequence(image)
+                # grid_image = make_grid(image, 5, normalize=False)
+                # #writer.add_image('unlabel/Predicted_label', grid_image, iter_num)
 
-                image = label_batch[-1, :, :, 20:61:10].permute(2, 0, 1)
-                grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                #writer.add_image('unlabel/Groundtruth_label', grid_image, iter_num)
+                # image = label_batch[-1, :, :, 20:61:10].permute(2, 0, 1)
+                # grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
+                # #writer.add_image('unlabel/Groundtruth_label', grid_image, iter_num)
 
             ## change lr
             if iter_num % 2500 == 0:
@@ -304,4 +306,5 @@ if __name__ == "__main__":
     save_mode_path = os.path.join(snapshot_path, 'iter_'+str(max_iterations)+'.pth')
     torch.save(model.state_dict(), save_mode_path)
     logging.info("save model to {}".format(save_mode_path))
-    #writer.close()
+    writer.flush()
+    writer.close()

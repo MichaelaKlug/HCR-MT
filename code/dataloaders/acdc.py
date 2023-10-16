@@ -41,8 +41,8 @@ class acdc(Dataset):
         #number = (self._base_dir+"/"+image_name+"/mri_norm2.h5", 'r')
         # image = h5f['image'][:]
         # label = h5f['label'][:]
-        print('image shape ', image.shape)
-        print('label shape ', label.shape)
+        # print('image shape ', image.shape)
+        # print('label shape ', label.shape)
         sample = {'image': image, 'label': label}
         if self.transform:
             sample = self.transform(sample)

@@ -9,7 +9,7 @@ from tqdm import tqdm
 from scipy import ndimage
 
 
-def test_all_case(net, image_list, num_classes, patch_size=(112, 112, 80), stride_xy=18, stride_z=4, save_result=True, test_save_path=None, preproc_fn=None):
+def test_all_case(net, image_list, num_classes, patch_size=(112, 112, 8), stride_xy=18, stride_z=4, save_result=True, test_save_path=None, preproc_fn=None):
     total_metric = 0.0
     for image_path in tqdm(image_list):
         id = image_path.split('/')[-1]

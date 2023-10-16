@@ -9,7 +9,8 @@ def dice_loss(outputs, targets):
     loss=0
     for class_idx in range(num_classes):
         # Extract the predictions and ground truth for the current class
-        pred_class = outputs[:, class_idx, :, :, :]
+        #pred_class = outputs[:, class_idx, :, :, :]
+        pred_class = (outputs == class_idx).float()
         target_class = (targets == class_idx).float()
 
         intersection = torch.sum(pred_class * target_class) #is this correct?
