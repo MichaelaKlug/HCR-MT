@@ -6,7 +6,7 @@ from test_util import test_all_case
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str, default='../data/cropped_images/', help='Name of Experiment')
-parser.add_argument('--model', type=str,  default='vnet', help='model_name')
+parser.add_argument('--model', type=str,  default='mmt', help='model_name')
 parser.add_argument('--dataset', type=str,  default='la', help='dataset to use')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
 parser.add_argument('--iteration', type=int,  default=6000, help='GPU to use')
@@ -34,13 +34,14 @@ def test_calculate_metric(epoch_num):
 
 
     avg_metric = test_all_case(net, image_list, num_classes=num_classes,
-                               patch_size=(112, 112, 80), stride_xy=18, stride_z=4,
+                               patch_size=(112, 112, 8), stride_xy=18, stride_z=4,
                                save_result=True, test_save_path=test_save_path)
 
     return avg_metric
 
 
 if __name__ == '__main__':
+    print('step one')
     metric = test_calculate_metric(FLAGS.iteration)
     print(metric)
     with open("../model_" + FLAGS.dataset + "/prediction.txt","a") as f:

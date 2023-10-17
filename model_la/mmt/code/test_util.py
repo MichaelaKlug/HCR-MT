@@ -28,23 +28,27 @@ def test_all_case(net, image_list, num_classes, patch_size=(112, 112, 8), stride
         print('unique values are 1: ',np.unique(prediction),np.unique( label[:]))
         #prediction = ndimage.binary_fill_holes(prediction)
         print('unique values are 2: ',np.unique(prediction),np.unique( label[:]))
+        image_metric=np.array([0,0,0,0]).astype(np.float64)
         for class_id in range(4):
             prediction_class = prediction == class_id
             label_class = label == class_id
             prediction_class = ndimage.binary_fill_holes(prediction_class)
             #if np.unique(prediction_class).
             if np.unique(prediction_class).shape[0]!=2:
-                single_metric = (0,0,0,0)
+                single_metric = np.array([0,0,0,0]).astype(np.float64)
             else:
                 single_metric = calculate_metric_percase(prediction_class, label_class)
             
-           
+            image_metric+=single_metric
+        #print('image metric is ', type(image_metric)," ",image_metric)
+        image_metric/=4.0
             #print('len ', len(np.unique(prediction_class)))
-            print('unique values are 3: ',np.unique(prediction_class),np.unique(label_class))
-            total_metric += np.asarray(single_metric)
+            #print('unique values are 3: ',np.unique(prediction_class),np.unique(label_class))
+            #get average metric per image over the 4 classes
+        total_metric += np.asarray(image_metric)
 
         if save_result:
-            print('should be here??')
+          
             nib.save(nib.Nifti1Image(prediction.astype(np.float32), np.eye(4)), test_save_path + id + "_pred.nii.gz")
             nib.save(nib.Nifti1Image(image[:].astype(np.float32), np.eye(4)), test_save_path + id + "_img.nii.gz")
             nib.save(nib.Nifti1Image(label[:].astype(np.float32), np.eye(4)), test_save_path + id + "_gt.nii.gz")
@@ -196,5 +200,5 @@ def calculate_metric_percase(pred, gt):
     jc = metric.binary.jc(pred, gt)
     hd = metric.binary.hd95(pred, gt)
     asd = metric.binary.asd(pred, gt)
-    return dice, jc, hd, asd
+    return np.array([dice, jc, hd, asd])
   

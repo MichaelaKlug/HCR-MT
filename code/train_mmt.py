@@ -13,6 +13,7 @@ import numpy as np
 import pdb
 import os
 import queue 
+import matplotlib.pyplot as plt
 from torch import nn
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
@@ -133,11 +134,12 @@ if __name__ == "__main__":
                                CenterCrop(patch_size),
                                ToTensor()
                            ]))
-        labeled_idxs = list(range(64))
-        unlabeled_idxs = list(range(64, 80))
-
+        labeled_idxs = list(range(32))
+        unlabeled_idxs = list(range(32, 80))
+    labs=list(range(0, 18))
+    # unlabs=list(range(10, 19))
     batch_sampler = TwoStreamBatchSampler(labeled_idxs, unlabeled_idxs, batch_size, batch_size-labeled_bs)
-
+    batch_sampler2 = TwoStreamBatchSampler(labs, [18], batch_size, batch_size-labeled_bs)
     def create_model(ema=False):
         # Network definition
         #, pyramid_has_dropout=True
@@ -150,15 +152,67 @@ if __name__ == "__main__":
                 param.detach_()
         return model
 
+
+    def calculate_validation_loss(model, ema_model,val_loader):
+        #print('here??')
+        val_losses=[]
+        model.eval()  # Set the model in evaluation mode
+        ema_model.eval()
+        with torch.no_grad():
+            total_val_loss = 0.0
+            num_batches = len(val_loader)
+            #print(len(val_loader))
+            for i_batch, val_batch in enumerate(val_loader):
+                volume_batch, label_batch = val_batch['image'], val_batch['label']
+                volume_batch, label_batch = volume_batch.cuda(), label_batch.cuda()
+                noise = torch.clamp(torch.randn_like(volume_batch) * 0.1, -0.2, 0.2)
+                ema_inputs = volume_batch + noise 
+
+                # distill: 
+                # student bs=4
+                student_encoder_output,outputs= model(volume_batch)
+                
+                # teacher bs=2
+                with torch.no_grad():
+                    teacher_encoder_output,ema_output = ema_model(ema_inputs)
+            
+                loss_seg = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
+            
+                outputs_main_soft = F.softmax(outputs, dim=1)
+                loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs], label_batch[:labeled_bs])
+
+                supervised_loss = 0.5*(loss_seg+loss_seg_dice)
+
+                consistency_weight = get_current_consistency_weight(iter_num//150)
+                consistency_dist = consistency_criterion(outputs, ema_output)
+                consistency_dist = torch.mean(consistency_dist)
+                consistency_loss = consistency_weight * consistency_dist
+                loss = supervised_loss + consistency_loss #+ contrastive_loss #+contrastive_loss here
+          
+                total_val_loss+=loss.item()
+                # val_losses.append(loss.item())
+
+            # Calculate the average validation loss
+            avg_val_loss = total_val_loss  / num_batches
+
+        model.train()  # Set the model back to training mode
+        ema_model.train()
+        return avg_val_loss
+    
+    
+    
     model = create_model() #student model
     ema_model = create_model(ema=True) #teacher model 
 
    
+    loss_values=[]
+    val_losses=[]
+
 
     def worker_init_fn(worker_id):
         random.seed(args.seed+worker_id)
     trainloader = DataLoader(db_train, batch_sampler=batch_sampler, num_workers=0, pin_memory=True, worker_init_fn=worker_init_fn)
-
+    valloader= DataLoader(db_test, batch_sampler=batch_sampler2, num_workers=0, pin_memory=True, worker_init_fn=worker_init_fn)
     model.train() #student model
     ema_model.train() #teacher model
     optimizer = optim.SGD(model.parameters(), lr=base_lr, momentum=0.9, weight_decay=0.0001)
@@ -183,6 +237,7 @@ if __name__ == "__main__":
     kl_distance = torch.nn.KLDivLoss(reduction='none')
     model.train()
     for epoch_num in tqdm(range(max_epoch), ncols=70):
+        ave_loss=0.0
         time1 = time.time()
         for i_batch, sampled_batch in enumerate(trainloader):
             time2 = time.time()
@@ -203,21 +258,16 @@ if __name__ == "__main__":
            
             ## calculate the loss
             # 1. L_sup bs=2 (labeled)
-            # TODO : make code work
-            #// TODO : lose mind
+           
             #
             # print(outputs)
             loss_seg = F.cross_entropy(outputs[:labeled_bs], label_batch[:labeled_bs])
-            # unique, counts = np.unique(label_batch[:labeled_bs].cpu().numpy(), return_counts=True)
-            # print(np.asarray((unique, counts)).T)
             outputs_main_soft = F.softmax(outputs, dim=1)
             #loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs, 1, :, :, :], label_batch[:labeled_bs] == 1)
             loss_seg_dice = losses.dice_loss(outputs_main_soft[:labeled_bs], label_batch[:labeled_bs])
 
             supervised_loss = 0.5*(loss_seg+loss_seg_dice)
 
-          
-            ##IS THIS WHERE I MUST CHANGE?
             ### hierarchical loss
 
             #contrastive loss
@@ -241,10 +291,14 @@ if __name__ == "__main__":
 
             # total loss
             loss = supervised_loss + consistency_loss #+ contrastive_loss #+contrastive_loss here
+            #print('type loss is ', type(loss.item()), " ", loss.item())
+            #ave_loss+=loss.item()
+            
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            loss_values.append(loss.item())
 
             update_ema_variables(model, ema_model, args.ema_decay, iter_num)
 
@@ -260,36 +314,7 @@ if __name__ == "__main__":
 
             logging.info('iteration %d : loss : %f cons_dist: %f, loss_weight: %f' %
                          (iter_num, loss.item(), consistency_dist.item(), consistency_weight))
-            # if iter_num % 50 == 0:
-            #     image = volume_batch[0, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-            #     grid_image = make_grid(image, 5, normalize=True)
-                #writer.add_image('train/Image', grid_image, iter_num)
-
-                # # image = outputs_soft[0, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                # image = torch.max(outputs_main_soft[0, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
-                # image = utils.decode_seg_map_sequence(image)
-                # grid_image = make_grid(image, 5, normalize=False)
-                # #writer.add_image('train/Predicted_label', grid_image, iter_num)
-
-                # image = label_batch[0, :, :, 20:61:10].permute(2, 0, 1)
-                # grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                # #writer.add_image('train/Groundtruth_label', grid_image, iter_num)
-
-                # #####
-                # image = volume_batch[-1, 0:1, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                # grid_image = make_grid(image, 5, normalize=True)
-                #writer.add_image('unlabel/Image', grid_image, iter_num)
-
-                # # image = outputs_soft[-1, 3:4, :, :, 20:61:10].permute(3, 0, 1, 2).repeat(1, 3, 1, 1)
-                # image = torch.max(outputs_main_soft[-1, :, :, :, 20:61:10], 0)[1].permute(2, 0, 1).data.cpu().numpy()
-                # image = utils.decode_seg_map_sequence(image)
-                # grid_image = make_grid(image, 5, normalize=False)
-                # #writer.add_image('unlabel/Predicted_label', grid_image, iter_num)
-
-                # image = label_batch[-1, :, :, 20:61:10].permute(2, 0, 1)
-                # grid_image = make_grid(utils.decode_seg_map_sequence(image.data.cpu().numpy()), 5, normalize=False)
-                # #writer.add_image('unlabel/Groundtruth_label', grid_image, iter_num)
-
+            
             ## change lr
             if iter_num % 2500 == 0:
                 lr_ = base_lr * 0.1 ** (iter_num // 2500)
@@ -299,14 +324,36 @@ if __name__ == "__main__":
                 save_mode_path = os.path.join(snapshot_path, 'iter_' + str(iter_num) + '.pth')
                 torch.save(model.state_dict(), save_mode_path)
                 logging.info("save model to {}".format(save_mode_path))
-
+            val_losses.append(calculate_validation_loss(model, ema_model,valloader))
             if iter_num >= max_iterations:
+                
                 break
             time1 = time.time()
+        
+        
         if iter_num >= max_iterations:
             break
+        
     save_mode_path = os.path.join(snapshot_path, 'iter_'+str(max_iterations)+'.pth')
     torch.save(model.state_dict(), save_mode_path)
     logging.info("save model to {}".format(save_mode_path))
+    iterations = np.linspace(1, 6000, 6000, dtype=int)
+    #loss_values = loss_values.cpu().detach().numpy()
+    plt.figure(figsize=(8, 6))
+    plt.plot(iterations, loss_values, marker='o', linestyle='-')
+    plt.title('Training Loss Over Iterations')
+    plt.xlabel('Iterations')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    # Save the plot as an image file (e.g., PNG or PDF)
+    plt.savefig('training_loss_plot_32_val.png')
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(iterations, val_losses, marker='o', linestyle='-')
+    plt.title('Validation Loss Over Iterations')
+    plt.xlabel('Iterations')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.savefig('validation_loss_plot_32.png')
     writer.flush()
     writer.close()

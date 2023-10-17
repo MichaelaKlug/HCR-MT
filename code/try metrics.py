@@ -66,8 +66,10 @@ targets=np.array([
   ]
 ])
 
-outputs=torch.from_numpy(outputs)
-targets=torch.from_numpy(targets)
+# outputs=torch.from_numpy(outputs)
+# targets=torch.from_numpy(targets)
 
-print(dice_loss(outputs,targets))
+# print(dice_loss(outputs,targets))
   
+# print(np.array([1,2,2])+np.array([1,1,1]))
+print([]+[1,2,3]+[4,5,6])

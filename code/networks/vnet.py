@@ -216,6 +216,8 @@ class VNet(nn.Module):
 
         x7 = self.block_seven(x6_up)
         x7_up = self.block_seven_up(x7)
+        # print('x7 up shape ', x7_up.shape)
+        # print('x2 shape ', x2.shape)
         x7_up = x7_up + x2
 
         x8 = self.block_eight(x7_up)

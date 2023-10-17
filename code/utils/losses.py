@@ -12,7 +12,7 @@ def dice_loss(outputs, targets):
         #pred_class = outputs[:, class_idx, :, :, :]
         pred_class = (outputs == class_idx).float()
         target_class = (targets == class_idx).float()
-        num_in_class=torch.sum(target_class)
+       # num_in_class=torch.sum(target_class)
 
         intersection = torch.sum(pred_class * target_class) #is this correct?
 
@@ -21,10 +21,11 @@ def dice_loss(outputs, targets):
         dice = (2 * intersection + smooth) / (union + smooth)
 
         # Add the Dice coefficient for the current class to the loss
-        loss += ((1 - dice)/num_in_class)
+        loss+=(1 - dice)
+        #loss += ((1 - dice)/num_in_class)
 
     # Average the loss over all classes
-    #loss /= num_classes
+    loss /= num_classes
 
     return loss
     #smooth = 1e-5

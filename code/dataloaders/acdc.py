@@ -30,7 +30,7 @@ class acdc(Dataset):
         return len(self.image_list)
 
     def __getitem__(self, idx):
-        
+        #print('idx is ',idx)
         image_name = self.image_list[idx]
         # print('/data/cropped_images/'+image_name+'/img_cropped.nii.gz')
     
